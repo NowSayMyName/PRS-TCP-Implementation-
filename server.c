@@ -8,12 +8,11 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
-#include "server.h"
+#include "connection.h"
 
 #define RCVSIZE 1024
 
 int main (int argc, char *argv[]) {
-
   if (argc != 2) {
     printf("The correct way to start the program is \"./server <server_port>\"\n");
     return -1;
@@ -52,30 +51,5 @@ int main (int argc, char *argv[]) {
     }
   }
   close(server_desc);
-return 0;
-}
-
-int acceptConnection(int server_desc, const struct sockaddr_in client_addr, char* buffer, int port) {
-  socklen_t alen= sizeof(client_addr);
-  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
-  if (receiveResult < 1) {
-    return -1;
-  }
-  if (!strcmp(buffer, "SYN")) {
-    return -2;
-  }
-  sprintf(buffer, "%d", "SYN");
-  sprintf(buffer+7, "%d", port);
-  int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &alen);
-  if (sendResult < 1) {
-    return -3;
-  }
-  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
-  if (receiveResult < 1) {
-    return -4;
-  }
-  if (!strcmp(buffer, "ACK")) {
-    return -5;
-  }
-  return 1;
+  return 0;
 }

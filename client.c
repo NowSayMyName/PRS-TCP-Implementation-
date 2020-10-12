@@ -47,7 +47,7 @@ int main (int argc, char *argv[]) {
   return 0;
 }
 
-int connect(int server_desc, const struct sockaddr* serv_addr) {
+int connect(int server_desc, const struct sockaddr_in serv_addr) {
   char buffer[] = "SYN";
   int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
   int received = 0;

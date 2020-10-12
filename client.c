@@ -41,33 +41,38 @@ int main (int argc, char *argv[]) {
 
   serv_addr.sin_family= AF_INET;
   serv_addr.sin_port= htons(control_port);
-  connect(server_desc, serv_addr);
+  int connectResult = connect(server_desc, serv_addr, buffer);
+
+  if (connectResult < 0) {
+    printf("Connexion error : %d", connectResult);
+  }
 
   close(server_desc);
   return 0;
 }
 
-int connect(int server_desc, const struct sockaddr_in serv_addr) {
-  char buffer[] = "SYN";
+int connect(int server_desc, const struct sockaddr_in serv_addr, char* buffer) {
+  sprintf(buffer, "%d", "SYN");
   int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-  int received = 0;
-
-  while (received == 0) {
-    int bufferResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-    strncat(buffer, buffer, 7);
-    char data_port = buffer;
-    
-    if (strcmp(buffer, "SYN-ACK")) {
-      received = 1;
-      char buffer[] = "ACK";
-      int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-    }else{
-      return -1;
-    }
+  if (sendResult < 1) {
+    return -1;
   }
-  
-}
+  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+    if (receiveResult < 1) {
+    return -2;
+  }
+  strncat(buffer, buffer, 7);
+  char data_port = buffer;
 
-// int sendMessage(const void* buffer, int server_desc, const struct sockaddr_in serv_addr*) {
-//   return sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-// }
+  if (!strcmp(buffer, "SYN-ACK")) {
+    return -3;
+  }
+
+  sprintf(buffer, "%d", "ACK");
+  sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));  int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  if (sendResult < 1) {
+    return -4;
+  }
+
+  return 1;
+}

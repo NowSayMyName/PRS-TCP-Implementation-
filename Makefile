@@ -5,6 +5,7 @@ mainTest: test.o
 
 test.o: test.c
 	gcc -Wall test.c -I./include -c -o test.o
+	
 mainServer: server.o connection.o
 	gcc -Wall server.o connection.o -o mainServer
 

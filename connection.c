@@ -20,7 +20,6 @@ int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buff
   }
   printf("%s\n", buffer);
   char buffer2[RCVSIZE];
-
   strcpy(buffer2, buffer);
   //strncat(buffer, buffer, 8);
 

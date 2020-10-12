@@ -67,7 +67,7 @@ int main (int argc, char *argv[]) {
       char msg[] = "SYN-ACK ";
       sprintf(msg+7, "%d", port);
       int ret = sendto(server_desc, msg, sizeof(msg), 0, (struct sockaddr*)&server_desc, sizeof(server_desc));
-    }
+
   }
   close(server_desc);
 

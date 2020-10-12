@@ -22,6 +22,21 @@ int main (int argc, char *argv[]) {
     printf("Invalid address");
     return -1;
   }
+  char filepath[] = "/home/mbonnefoy/Téléchargements/test.pdf";
+
+  FILE *file;
+  char *file_data;
+  file = fopen(filepath, "rb");
+
+  //Allocate memory
+  file_data=(char *)malloc(sizeof(file_data));
+
+  //Read file contents into buffer
+  fread(file_data, sizeof(file_data), 1, file);
+  fclose(file);
+  printf(file_data)
+
+
 
   int control_port = atoi(argv[2]);
 
@@ -66,7 +81,7 @@ int connect(int server_desc, const struct sockaddr_in serv_addr) {
       return -1;
     }
   }
-  
+
 }
 
 // int sendMessage(const void* buffer, int server_desc, const struct sockaddr_in serv_addr*) {

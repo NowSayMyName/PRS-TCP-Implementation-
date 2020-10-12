@@ -47,7 +47,7 @@ int main (int argc, char *argv[]) {
   while (1) {
     int acceptResult = acceptConnection(server_desc, client_addr, buffer, port);
     if (acceptResult < 0) {
-      printf("Connexion error : %d", acceptResult);
+      printf("Connexion error : %d\n", acceptResult);
     }
   }
   close(server_desc);

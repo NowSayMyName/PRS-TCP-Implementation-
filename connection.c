@@ -5,36 +5,49 @@
 
 #define RCVSIZE 1024
 
+char *substring(char *src,int pos,int len) { 
+  char *dest=NULL;                        
+  if (len>0) {                  
+    /* allocation et mise à zéro */          
+    dest = calloc(len+1, 1);      
+    /* vérification de la réussite de l'allocation*/  
+    if(NULL != dest) {
+        strncat(dest,src+pos,len);            
+    }
+  }                                       
+  return dest;                            
+}
+
 /** renvoie le port utilisé par le serveur pour les messages de controles, sinon des valeurs <0*/
 int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buffer) {
   socklen_t alen = sizeof(serv_addr);
   sprintf(buffer, "%s", "SYN");
   printf("%s\n", buffer);
+
   int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, alen);
   if (sendResult < 1) {
     return -1;
   }
+
   int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, &alen);
     if (receiveResult < 1) {
     return -2;
   }
   printf("%s\n", buffer);
-  char buffer2[RCVSIZE];
-  strcpy(buffer2, buffer);
-  //strncat(buffer, buffer, 8);
 
-  if (!strcmp(buffer, "SYN-ACK ")) {
+  if (!strcmp(substring(buffer, 0, 9), "SYN-ACK ")) {
     return -3;
   }
 
   sprintf(buffer, "%s", "ACK");
   printf("%s\n", buffer);
+  
   sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, alen);
   if (sendResult < 1) {
     return -4;
   }
-  strncat(buffer2, buffer2+8, 4);
-  return atoi(buffer2);
+
+  return atoi(substring(buffer, 8, 4));
 }
 
 /** waits for a connection and sends the control port number*/
@@ -51,10 +64,12 @@ int acceptConnection(int server_desc, struct sockaddr_in client_addr, char* buff
   sprintf(buffer, "%s", "SYN-ACK ");
   sprintf(buffer+8, "%d", port);
   printf("%s\n", buffer);
-  int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, alen);
+
+  int sendResult = sendto(server_desc, buffer, 12, 0, (struct sockaddr*)&client_addr, alen);
   if (sendResult < 1) {
     return -3;
   }
+
   receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
   printf("%s\n", buffer);
   if (receiveResult < 1) {

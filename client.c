@@ -46,9 +46,10 @@ int main (int argc, char *argv[]) {
   int connectResult = connectionToServer(server_desc, serv_addr, buffer);
 
   if (connectResult < 0) {
-    printf("Connexion error : %d", connectResult);
+    printf("Connexion error : %d\n", connectResult);
   } else {
     int data_port = connectResult;
+    printf("Data port : %d\n", connectResult);
   }
 
   close(server_desc);

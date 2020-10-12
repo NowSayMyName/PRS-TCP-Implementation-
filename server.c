@@ -56,20 +56,32 @@ int main (int argc, char *argv[]) {
   //   if (FD_ISSET (server_desc, &socket_set)) {
 
   while (1) {
-    int msgResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr *) &client, &alen);
-    if (msgResult < 0) {
-      printf("ERREUR UDP");
-      return -1;
-    }
-    printf("%s\n",buffer);
-
-    if (strcmp(buffer, "SYN")) {
-      char msg[] = "SYN-ACK ";
-      sprintf(msg+7, "%d", port);
-      int ret = sendto(server_desc, msg, sizeof(msg), 0, (struct sockaddr*)&server_desc, sizeof(server_desc));
-    }
+    int acceptResult = acceptConnection(server_desc, serv_addr, buffer, port);
   }
   close(server_desc);
-
 return 0;
+}
+
+int acceptConnection(int server_desc, const struct sockaddr_in serv_addr, char* buffer, int port) {
+  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  if (receiveResult < 1) {
+    return -1;
+  }
+  if (!strcmp(buffer, "SYN")) {
+    return -1;
+  }
+  char msg[] = "SYN-ACK ";
+  sprintf(msg+7, "%d", port);
+  int sendResult = sendto(server_desc, msg, sizeof(msg), 0, (struct sockaddr*)&server_desc, sizeof(server_desc));
+  if (sendResult < 1) {
+    return -1;
+  }
+  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  if (receiveResult < 1) {
+    return -1;
+  }
+  if (!strcmp(buffer, "ACK")) {
+    return -1;
+  }
+  return 1;
 }

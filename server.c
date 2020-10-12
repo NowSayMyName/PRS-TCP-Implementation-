@@ -8,6 +8,8 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
+#include "server.h"
+
 #define RCVSIZE 1024
 
 int main (int argc, char *argv[]) {

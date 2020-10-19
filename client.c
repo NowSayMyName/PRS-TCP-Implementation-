@@ -45,6 +45,7 @@ int main (int argc, char *argv[]) {
 
   if (connectResult < 0) {
     printf("Connexion error : %d\n", connectResult);
+    return -1;
   } else {
     serv_addr.sin_port = htons(connectResult);
     printf("Data port : %d\n", connectResult);
@@ -54,7 +55,7 @@ int main (int argc, char *argv[]) {
   int fragResult = sendFrag(filepath, buffer_size, server_desc, serv_addr);
   if(fragResult < 0){
     printf("Fragmentation error : %d\n", fragResult);
-  } else {
+    return -1;
   }
 
   close(server_desc);

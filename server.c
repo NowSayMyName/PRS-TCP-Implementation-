@@ -50,18 +50,18 @@ int main (int argc, char *argv[]) {
         if (receiveResult < 1) {
           return -2;
         }
-        if(buffer=="[(DATA END)] "){
+        if(strcmp(buffer,"[(DATA END)] ")!=0){
           transmitting = 0;
         }else{
           fwrite(buffer,RCVSIZE,1,file);
         }
       }
+      fclose(file);
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }
   }
   
-  fclose(file);
   close(server_desc_ctrl);
   close(server_desc_data);
 

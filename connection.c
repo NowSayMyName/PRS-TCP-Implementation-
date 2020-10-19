@@ -5,6 +5,42 @@
 
 #define RCVSIZE 1024
 
+int createSocket(struct sockaddr_in server, char * address, int port) {
+  int valid= 1;
+  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
+
+  if (server_desc < 0) {
+    perror("Cannot create socketUDP\n");
+    return -1;
+  }
+
+  int optResult = setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
+  if (optResult > 0) {
+    perror("optResult\n");
+    return -2;
+  }
+
+  server.sin_family= AF_INET;
+  server.sin_port= htons(port);
+  if (address == NULL) {
+    server.sin_addr.s_addr= htonl(INADDR_ANY);
+
+    int bindResult = bind(server_desc, (struct sockaddr*) &server, sizeof(server));
+    if (bindResult < 0) {
+      perror("bindResult");
+      close(server_desc);
+      return -4;
+    }
+  } else {
+    int addressResult = inet_aton(address, &server.sin_addr);
+    if (addressResult <= 0) {
+      printf("Invalid address");
+      return -3;
+    }
+  }
+  return server_desc;
+}
+
 char *substring(char *src,int pos,int len) { 
   char *dest=NULL;                        
   if (len>0) {                  

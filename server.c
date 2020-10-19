@@ -18,29 +18,12 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  struct sockaddr_in address, clientHandler, client_addr;
-  int port = atoi(argv[1]);
-  int valid= 1;
+  struct sockaddr_in server, clientHandler, client_addr;
   char buffer[RCVSIZE];
 
-  //create socket
-  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
+  int server_desc = createSocket(server, NULL, atoi(argv[1]));
   if (server_desc < 0) {
-    perror("Cannot create socketUDP\n");
-    return -1;
-  }
-
-  setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
-
-  address.sin_family= AF_INET;
-  address.sin_port= htons(port);
-  address.sin_addr.s_addr= htonl(INADDR_ANY);
-
-  //initialize socket
-  int bindResult = bind(server_desc, (struct sockaddr*) &address, sizeof(address));
-  if (bindResult < 0) {
-    perror("bindResult");
-    close(server_desc);
+    printf("socket error :%d\n", server_desc);
     return -1;
   }
 

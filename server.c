@@ -18,7 +18,7 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  struct sockaddr_in address, client_addr;
+  struct sockaddr_in address, clientHandler, client_addr;
   int port = atoi(argv[1]);
   int valid= 1;
   char buffer[RCVSIZE];
@@ -44,13 +44,29 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  int dataport = 5001;
+  int dataport = port + 1;
   while (1) {
     int acceptResult = acceptConnection(server_desc, client_addr, dataport, buffer, RCVSIZE);
-    dataport++;
+    
     if (acceptResult < 0) {
       printf("Connexion error : %d\n", acceptResult);
+      return -1;
     }
+
+    int forkResult = fork();
+    if (forkResult == 0) {
+        /*setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
+
+        clientHandler.sin_family= AF_INET;
+        clientHandler.sin_port= htons(dataport);
+        clientHandler.sin_addr.s_addr= htonl(INADDR_ANY);*/
+      //talk on data port
+    } else if (forkResult > 0) {
+      dataport++;
+    } else {
+      printf("FORK ERROR :%d\n", forkResult);
+    }
+
   }
   close(server_desc);
   return 0;

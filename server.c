@@ -36,7 +36,7 @@ int main (int argc, char *argv[]) {
   }
 
   while (1) {
-    int acceptResult = acceptConnection(server_desc_ctrl, client_addr, port, buffer, RCVSIZE);
+    int acceptResult = acceptConnection(server_desc_ctrl, client_addr, data_port, buffer, RCVSIZE);
     if (acceptResult < 0) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
@@ -59,13 +59,6 @@ int main (int argc, char *argv[]) {
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }
-  }
-  FILE *file;
-  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
-  if(file == NULL)
-  {
-    printf("Unable to create file.\n");
-    return -1;
   }
   
   fclose(file);

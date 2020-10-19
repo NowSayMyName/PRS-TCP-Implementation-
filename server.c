@@ -27,6 +27,13 @@ int main (int argc, char *argv[]) {
   //create socket
   int server_desc_ctrl = createSocket(server_ctrl, NULL, port);
   int server_desc_data = createSocket(server_data, NULL, data_port);
+  FILE *file;
+  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
+  if(file == NULL)
+  {
+    printf("Unable to create file.\n");
+    return -1;
+  }
 
   while (1) {
     int acceptResult = acceptConnection(server_desc_ctrl, client_addr, port, buffer, RCVSIZE);
@@ -35,24 +42,27 @@ int main (int argc, char *argv[]) {
       return -1;
     }  
 
-    /*int forkResult = fork();
+        /*int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }*/
+    int transmiting =1;
+    while(transmiting){
 
-  }
-  FILE *file;
-  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
-  if(file == NULL)
-    {
-      printf("Unable to create file.\n");
-      return -1;
+      int receiveResult = recvfrom(server_desc_data, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &sizeof(client_addr));
+      if (receiveResult < 1) {
+        return -2;
+      }
+      if(buffer=="[(DATA END)] "){
+        transmiting = 0;
+      }else{
+        fwrite(buffer,RCVSIZE,1,file);
+      }
     }
-    fwrite(buffer,RCVSIZE,1,file);
-    fclose(file);
-
+  }
+  fclose(file);
   close(server_desc_ctrl);
   close(server_desc_data);
 

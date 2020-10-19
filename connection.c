@@ -135,6 +135,11 @@ int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sock
           return sendResult;
         }
     }
+    sprintf(buffer, "%s", "[(DATA END)] ");
+    int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+    if (sendResult < 1) {
+      return sendResult;
+    }
     fclose(file);
     return 0;
 }

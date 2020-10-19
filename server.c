@@ -56,12 +56,13 @@ int main (int argc, char *argv[]) {
           fwrite(buffer,RCVSIZE,1,file);
         }
       }
+      fclose(file);
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }
   }
   
-  fclose(file);
+  
   close(server_desc_ctrl);
   close(server_desc_data);
 

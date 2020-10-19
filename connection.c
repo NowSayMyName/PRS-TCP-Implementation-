@@ -123,32 +123,24 @@ int acceptConnection(int server_desc, struct sockaddr_in client_addr, int port, 
 
 /** fragments and sends a file**/
 int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sockaddr_in serv_addr){
-    //char filepath[] = "/home/yrouxel/Téléchargements/test.pdf";
-    unsigned char buffer[buffer_size];
+  //char filepath[] = "/home/yrouxel/Téléchargements/test.pdf";
+  unsigned char buffer[buffer_size];
 
-    FILE *file;
-    file = fopen(filepath, "rb");
-    while(feof(file) == 0){
-        fread(buffer, buffer_size, 1, file);
-        int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-        if (sendResult < 1) {
-          return sendResult;
-        }
-    }
-    sprintf(buffer, "%s", "[(DATA END)] ");
+  FILE *file;
+  file = fopen(filepath, "rb");
+  while(feof(file) == 0){
+    fread(buffer, buffer_size, 1, file);
     int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
     if (sendResult < 1) {
       return sendResult;
     }
-    fclose(file);
-    return 0;
-}
-
-int sendData(int server_desc, const struct sockaddr_in serv_addr, char* data, int buffer_size) {
-  int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-  if (sendResult < 1) {
-    return sendResult;
   }
-
-  
+  sprintf(buffer, "%s","[(DATA END)] ");
+  int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  if (sendResult < 1) {
+    return -1;
+  }
+  fclose(file);
+  fclose(file);
+  return 0;
 }

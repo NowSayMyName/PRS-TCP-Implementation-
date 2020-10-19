@@ -46,7 +46,7 @@ int main (int argc, char *argv[]) {
 
   int dataport = port + 1;
   while (1) {
-    int acceptResult = acceptConnection(server_desc, client_addr, port, buffer, RCVSIZE);
+    int acceptResult = acceptConnection(server_desc, client_addr, dataport, buffer, RCVSIZE);
     if (acceptResult < 0) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;

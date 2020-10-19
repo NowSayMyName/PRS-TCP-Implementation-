@@ -50,7 +50,7 @@ int main (int argc, char *argv[]) {
     printf("Data port : %d\n", connectResult);
   }
   char filepath[] = "/home/mbonnefoy/Téléchargements/test.pdf";
-  int buffer_size = 1000;
+  int buffer_size = 1024;
   int fragResult = sendFrag(filepath, buffer_size, server_desc, serv_addr);
   if(fragResult < 0){
     printf("Fragmentation error : %d\n", fragResult);

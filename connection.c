@@ -121,7 +121,7 @@ int acceptConnection(int server_desc, struct sockaddr_in client_addr, int port, 
   return 1;
 }
 
-/** fragment and send a file**/
+/** fragments and sends a file**/
 int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sockaddr_in serv_addr){
     //char filepath[] = "/home/yrouxel/Téléchargements/test.pdf";
     unsigned char buffer[buffer_size];

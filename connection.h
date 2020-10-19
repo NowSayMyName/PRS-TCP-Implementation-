@@ -6,4 +6,5 @@
 int acceptConnection(int server_desc, struct sockaddr_in client_addr, char* buffer, int port);
 int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buffer);
 char *substring(char *src,int pos,int len);
+int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sockaddr_in serv_addr);
 

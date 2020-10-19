@@ -29,7 +29,7 @@ int main (int argc, char *argv[]) {
 
   int valid = 1;
   char buffer[RCVSIZE];
-  
+
   //create socket
   int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
   if (server_desc < 0) {
@@ -50,7 +50,7 @@ int main (int argc, char *argv[]) {
     printf("Data port : %d\n", connectResult);
   }
   char filepath[] = "/home/mbonnefoy/Téléchargements/test.pdf";
-  int buffer_size = 200;
+  int buffer_size = 1000;
   int fragResult = sendFrag(filepath, buffer_size, server_desc, serv_addr);
   if(fragResult < 0){
     printf("Fragmentation error : %d\n", fragResult);

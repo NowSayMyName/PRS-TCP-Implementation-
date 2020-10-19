@@ -28,13 +28,11 @@ int main (int argc, char *argv[]) {
 
   int dataport = port + 1;
   while (1) {
-    int acceptResult = acceptConnection(server_desc, client_addr, dataport, buffer, RCVSIZE);
-    
+    int acceptResult = acceptConnection(server_desc, client_addr, port, buffer, RCVSIZE);
     if (acceptResult < 0) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
-    }
-    printf("RECEIVED : %s\n",buffer);
+    }  
 
     /*int forkResult = fork();
     if (forkResult == 0) {
@@ -46,6 +44,16 @@ int main (int argc, char *argv[]) {
     }*/
 
   }
+  FILE *file;
+  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
+  if(file == NULL)
+    {
+      printf("Unable to create file.\n");
+      return -1;
+    }
+    fwrite(buffer,RCVSIZE,1,file);
+    fclose(file);
+
   close(server_desc);
   return 0;
 }

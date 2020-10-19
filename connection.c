@@ -143,3 +143,12 @@ int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sock
     fclose(file);
     return 0;
 }
+
+int sendData(int server_desc, const struct sockaddr_in serv_addr, char* data, int buffer_size) {
+  int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  if (sendResult < 1) {
+    return sendResult;
+  }
+
+  
+}

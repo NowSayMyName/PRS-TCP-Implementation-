@@ -35,13 +35,16 @@ int main (int argc, char *argv[]) {
       return -1;
     }  
 
-    /*int forkResult = fork();
+    int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port
+      int transmitting = 1;
+      while (transmitting) {
+
+      }
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
-    }*/
-
+    }
   }
   FILE *file;
   file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");

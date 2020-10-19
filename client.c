@@ -43,7 +43,7 @@ int main (int argc, char *argv[]) {
 
   serv_addr.sin_family= AF_INET;
   serv_addr.sin_port= htons(control_port);
-  int connectResult = connectionToServer(server_desc, serv_addr, buffer);
+  int connectResult = connectionToServer(server_desc, serv_addr, buffer, RCVSIZE);
 
   if (connectResult < 0) {
     printf("Connexion error : %d\n", connectResult);

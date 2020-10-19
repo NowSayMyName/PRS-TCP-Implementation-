@@ -52,6 +52,7 @@ int main (int argc, char *argv[]) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
     }
+    printf("RECEIVED : %s\n",buffer);
 
     /*int forkResult = fork();
     if (forkResult == 0) {

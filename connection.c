@@ -11,8 +11,8 @@
 
 int createSocket(struct sockaddr_in server, char * address, int port) {
   int valid= 1;
-  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
 
+  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
   if (server_desc < 0) {
     perror("Cannot create socketUDP\n");
     return -1;
@@ -26,18 +26,18 @@ int createSocket(struct sockaddr_in server, char * address, int port) {
 
   server.sin_family= AF_INET;
   server.sin_port= htons(port);
+
   if (address == NULL) {
     server.sin_addr.s_addr= htonl(INADDR_ANY);
 
     int bindResult = bind(server_desc, (struct sockaddr*) &server, sizeof(server));
     if (bindResult < 0) {
       perror("bindResult");
-      close(server_desc);
       return -3;
     }
   } else {
     int addressResult = inet_aton(address, &server.sin_addr);
-    if (addressResult <= 0) {
+    if (addressResult < 0) {
       printf("Invalid address");
       return -4;
     }

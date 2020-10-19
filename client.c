@@ -20,7 +20,6 @@ int main (int argc, char *argv[]) {
   struct sockaddr_in serv_addr;
   
   int addressResult = inet_aton(argv[1], &serv_addr.sin_addr);
-
   if (addressResult <= 0) {
     printf("Invalid address");
     return -1;
@@ -33,8 +32,6 @@ int main (int argc, char *argv[]) {
 
   //create socket
   int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
-
-  // handle error
   if (server_desc < 0) {
     perror("cannot create socket\n");
     return -1;

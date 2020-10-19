@@ -18,13 +18,29 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  int port = atoi(argv[1]);
   struct sockaddr_in server, clientHandler, client_addr;
+  int port = atoi(argv[1]);
+  int valid= 1;
   char buffer[RCVSIZE];
 
-  int server_desc = createSocket(server, NULL, port);
+  //create socket
+  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
   if (server_desc < 0) {
-    printf("socket error :%d\n", server_desc);
+    perror("Cannot create socketUDP\n");
+    return -1;
+  }
+
+  setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
+
+  server.sin_family= AF_INET;
+  server.sin_port= htons(port);
+  server.sin_addr.s_addr= htonl(INADDR_ANY);
+
+  //initialize socket
+  int bindResult = bind(server_desc, (struct sockaddr*) &server, sizeof(server));
+  if (bindResult < 0) {
+    perror("bindResult");
+    close(server_desc);
     return -1;
   }
 
@@ -36,7 +52,7 @@ int main (int argc, char *argv[]) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
     }
-    printf("RECEIVED : %s \n",acceptResult);
+
     /*int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port

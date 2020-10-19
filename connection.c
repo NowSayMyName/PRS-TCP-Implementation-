@@ -29,13 +29,13 @@ int createSocket(struct sockaddr_in server, char * address, int port) {
     if (bindResult < 0) {
       perror("bindResult");
       close(server_desc);
-      return -4;
+      return -3;
     }
   } else {
     int addressResult = inet_aton(address, &server.sin_addr);
     if (addressResult <= 0) {
       printf("Invalid address");
-      return -3;
+      return -4;
     }
   }
   return server_desc;

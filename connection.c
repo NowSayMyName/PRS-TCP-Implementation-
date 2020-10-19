@@ -19,7 +19,7 @@ char *substring(char *src,int pos,int len) {
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles, sinon des valeurs <0*/
-int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buffer) {
+int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buffer, int buffer_size) {
   socklen_t alen = sizeof(serv_addr);
   sprintf(buffer, "%s", "SYN");
   printf("%s\n", buffer);
@@ -29,7 +29,7 @@ int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buff
     return -1;
   }
 
-  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &serv_addr, &alen);
+  int receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &serv_addr, &alen);
     if (receiveResult < 1) {
     return -2;
   }
@@ -51,9 +51,9 @@ int connectionToServer(int server_desc, struct sockaddr_in serv_addr, char* buff
 }
 
 /** waits for a connection and sends the control port number*/
-int acceptConnection(int server_desc, struct sockaddr_in client_addr, char* buffer, int port) {
+int acceptConnection(int server_desc, struct sockaddr_in client_addr, int port, char* buffer, int buffer_size) {
   socklen_t alen= sizeof(client_addr);
-  int receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
+  int receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &client_addr, &alen);
   printf("%s\n", buffer);
   if (receiveResult < 1) {
     return -1;
@@ -70,7 +70,7 @@ int acceptConnection(int server_desc, struct sockaddr_in client_addr, char* buff
     return -3;
   }
 
-  receiveResult = recvfrom(server_desc, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
+  receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &client_addr, &alen);
   printf("%s\n", buffer);
   if (receiveResult < 1) {
     return -4;

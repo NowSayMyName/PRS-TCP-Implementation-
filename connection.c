@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/select.h>
 
 #define RCVSIZE 1024
 
@@ -144,11 +145,34 @@ int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sock
     return 0;
 }
 
-int sendData(int server_desc, const struct sockaddr_in serv_addr, char* data, int buffer_size) {
-  int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+/*int sendData(int server_desc, const struct sockaddr_in client_addr, char* data, int buffer_size, int ack) {
+  char buffer[RCVSIZE];
+  socklen_t alen= sizeof(client_addr);
+
+  int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*) &client_addr, alen);
   if (sendResult < 1) {
     return sendResult;
   }
 
-  
-}
+  fd_set event_set;
+  FD_ZERO (&event_set);
+  FD_SET (server_descTCP, &event_set);
+  FD_SET (server_descUDP, &event_set);
+
+  while (1) {
+    if (select (FD_SETSIZE, &event_set, NULL, NULL, NULL) < 0){
+          perror ("select");
+          exit (EXIT_FAILURE);
+    }
+
+    if (FD_ISSET (read, &socket_set)) {
+      int receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &client_addr, &alen);
+      if (receiveResult < 1) {
+        return -2;
+      }
+
+    } else {
+
+    }
+  }
+}*/

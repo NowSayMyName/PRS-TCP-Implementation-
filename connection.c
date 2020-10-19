@@ -91,7 +91,6 @@ int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sock
 
     while(feof(file) == 0){
         fread(buffer, buffer_size, 1, file);
-        char buffer[] = "ACK";
         int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
     }
     fclose(file);

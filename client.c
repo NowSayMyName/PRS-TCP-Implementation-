@@ -48,7 +48,7 @@ int main (int argc, char *argv[]) {
   if (connectResult < 0) {
     printf("Connexion error : %d\n", connectResult);
   } else {
-    int data_port = connectResult;
+    serv_addr.sin_port = htons(connectResult);
     printf("Data port : %d\n", connectResult);
   }
 

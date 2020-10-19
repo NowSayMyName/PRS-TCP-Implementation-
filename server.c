@@ -41,27 +41,33 @@ int main (int argc, char *argv[]) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
     }  
-
-        /*int forkResult = fork();
+    int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port
+      int transmitting = 1;
+      while (transmitting) {
+        int receiveResult = recvfrom(server_desc_data, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, sizeof(client_addr));
+        if (receiveResult < 1) {
+          return -2;
+        }
+        if(buffer=="[(DATA END)] "){
+          transmitting = 0;
+        }else{
+          fwrite(buffer,RCVSIZE,1,file);
+        }
+      }
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
-    }*/
-    int transmiting =1;
-    while(transmiting){
-
-      int receiveResult = recvfrom(server_desc_data, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &sizeof(client_addr));
-      if (receiveResult < 1) {
-        return -2;
-      }
-      if(buffer=="[(DATA END)] "){
-        transmiting = 0;
-      }else{
-        fwrite(buffer,RCVSIZE,1,file);
-      }
     }
   }
+  FILE *file;
+  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
+  if(file == NULL)
+  {
+    printf("Unable to create file.\n");
+    return -1;
+  }
+  
   fclose(file);
   close(server_desc_ctrl);
   close(server_desc_data);

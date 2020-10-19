@@ -40,7 +40,9 @@ int main (int argc, char *argv[]) {
   char filepath[] = "/home/mbonnefoy/Téléchargements/test.pdf";
   int buffer_size = 200;
   int fragResult = sendFrag(filepath, buffer_size, server_desc, serv_addr);
-
+  if(fragResult < 0){
+    printf("Fragmentation error : %d\n", fragResult);
+  }
   close(server_desc);
   return 0;
 }

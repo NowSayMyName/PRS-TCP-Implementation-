@@ -35,7 +35,7 @@ int main (int argc, char *argv[]) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
     }
-
+    printf("RECEIVED : %s \n",acceptResult);
     int forkResult = fork();
     if (forkResult == 0) {
         /*setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));

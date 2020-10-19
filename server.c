@@ -50,7 +50,7 @@ int main (int argc, char *argv[]) {
         if (receiveResult < 1) {
           return -2;
         }
-        if(buffer=="[(DATA END)] "){
+        if(strcmp(buffer,"[(DATA END)] ")!=0){
           transmitting = 0;
         }else{
           fwrite(buffer,RCVSIZE,1,file);
@@ -59,13 +59,6 @@ int main (int argc, char *argv[]) {
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }
-  }
-  FILE *file;
-  file = fopen("/home/mbonnefoy/Téléchargements/testResult.pdf", "w");
-  if(file == NULL)
-  {
-    printf("Unable to create file.\n");
-    return -1;
   }
   
   fclose(file);

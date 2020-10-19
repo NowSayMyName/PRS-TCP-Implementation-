@@ -18,35 +18,18 @@ int main (int argc, char *argv[]) {
     return -1;
   }
 
-  struct sockaddr_in server, clientHandler, client_addr;
+  struct sockaddr_in server_ctrl, server_data, client_addr;
   int port = atoi(argv[1]);
-  int valid= 1;
+  int data_port = port + 1;
+
   char buffer[RCVSIZE];
 
   //create socket
-  int server_desc = socket(AF_INET, SOCK_DGRAM, 0);
-  if (server_desc < 0) {
-    perror("Cannot create socketUDP\n");
-    return -1;
-  }
+  int server_desc_ctrl = createSocket(server_ctrl, NULL, port);
+  int server_desc_data = createSocket(server_data, NULL, data_port);
 
-  setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &valid, sizeof(int));
-
-  server.sin_family= AF_INET;
-  server.sin_port= htons(port);
-  server.sin_addr.s_addr= htonl(INADDR_ANY);
-
-  //initialize socket
-  int bindResult = bind(server_desc, (struct sockaddr*) &server, sizeof(server));
-  if (bindResult < 0) {
-    perror("bindResult");
-    close(server_desc);
-    return -1;
-  }
-
-  int dataport = port + 1;
   while (1) {
-    int acceptResult = acceptConnection(server_desc, client_addr, dataport, buffer, RCVSIZE);
+    int acceptResult = acceptConnection(server_desc_ctrl, client_addr, port, buffer, RCVSIZE);
     if (acceptResult < 0) {
       printf("Connexion error : %d\n", acceptResult);
       return -1;
@@ -55,9 +38,7 @@ int main (int argc, char *argv[]) {
     /*int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port
-    } else if (forkResult > 0) {
-      dataport++;
-    } else {
+    } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }*/
 
@@ -72,6 +53,8 @@ int main (int argc, char *argv[]) {
     fwrite(buffer,RCVSIZE,1,file);
     fclose(file);
 
-  close(server_desc);
+  close(server_desc_ctrl);
+  close(server_desc_data);
+
   return 0;
 }

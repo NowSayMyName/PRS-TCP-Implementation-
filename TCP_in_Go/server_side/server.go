@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-	p := make([]byte, 2048)
 	addr := net.UDPAddr{
 		Port: 5000,
 		IP:   net.ParseIP("127.0.0.1"),

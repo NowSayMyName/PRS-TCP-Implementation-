@@ -50,6 +50,7 @@ int main (int argc, char *argv[]) {
     serv_addr.sin_port = htons(connectResult);
     printf("Data port : %d\n", connectResult);
   }
+  
   char filepath[] = "/home/mbonnefoy/Téléchargements/test.pdf";
   int buffer_size = 1024;
   int fragResult = sendFrag(filepath, buffer_size, server_desc, serv_addr);

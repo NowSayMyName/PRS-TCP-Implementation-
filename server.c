@@ -58,6 +58,8 @@ int main (int argc, char *argv[]) {
         }
       }
       fclose(file);
+    } else if (forkResult > 0) {
+
     } else if (forkResult < 0) {
       printf("FORK ERROR :%d\n", forkResult);
     }

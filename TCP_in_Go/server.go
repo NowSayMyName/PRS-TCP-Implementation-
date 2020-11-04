@@ -1,4 +1,4 @@
-package main
+package TCP_in_Go
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 func sendResponse(conn *net.UDPConn, addr *net.UDPAddr) {
-	_, err := conn.WriteToUDP([]byte("From server: Hello I got your message "), addr)
+	_, err := conn.WriteTo([]byte("From server: Hello I got your message "), addr)
 	if err != nil {
 		fmt.Printf("Couldn't send response %v", err)
 	}

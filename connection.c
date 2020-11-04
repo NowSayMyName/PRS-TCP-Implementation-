@@ -137,39 +137,28 @@ int sendFrag(char filepath[],int buffer_size, int server_desc, const struct sock
     }
     fclose(file);
     return 0;
+  }
 }
 
-/*int sendData(int server_desc, const struct sockaddr_in client_addr, char* data, int buffer_size, int ack) {
-  char buffer[RCVSIZE];
+int sendData(int server_desc, const struct sockaddr_in client_addr, char* data, int buffer_size, int window_size) {
   socklen_t alen= sizeof(client_addr);
 
-  int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*) &client_addr, alen);
-  }
-  sprintf(buffer, "%s","[(DATA END)] ");
-  int sendResult = sendto(server_desc, buffer, sizeof(buffer), 0, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-  if (sendResult < 1) {
-    return -1;
-  }
-
-  fd_set event_set;
-  FD_ZERO (&event_set);
-  FD_SET (server_descTCP, &event_set);
-  FD_SET (server_descUDP, &event_set);
-
-  while (1) {
-    if (select (FD_SETSIZE, &event_set, NULL, NULL, NULL) < 0){
-          perror ("select");
-          exit (EXIT_FAILURE);
-    }
-
-    if (FD_ISSET (read, &socket_set)) {
-      int receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &client_addr, &alen);
-      if (receiveResult < 1) {
-        return -2;
+  int forkResult = fork();
+  if (forkResult == 0) {
+    if (window_size > 0) {
+      int sendResult = sendto(server_desc, data, sizeof(data), 0, (struct sockaddr*)&client_addr, alen);
+      if (sendResult < 1) {
+        return -1;
       }
 
-    } else {
+      window_size--;
+    }
+  } else if (forkResult > 0) {
+    char* buffer[buffer_size];
+    int receiveResult = recvfrom(server_desc, buffer, buffer_size, 0, (struct sockaddr*) &client_addr, &alen);
 
+    if (strcmp(substring(buffer, 0, 4), "ACK ")) {
+      window_size++;
     }
   }
-}*/
+}

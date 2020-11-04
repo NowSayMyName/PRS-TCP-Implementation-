@@ -44,9 +44,10 @@ int main (int argc, char *argv[]) {
     int forkResult = fork();
     if (forkResult == 0) {
       //talk on data port
+      socklen_t alen = sizeof(client_addr);
       int transmitting = 1;
       while (transmitting) {
-        int receiveResult = recvfrom(server_desc_data, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, sizeof(client_addr));
+        int receiveResult = recvfrom(server_desc_data, buffer, RCVSIZE, 0, (struct sockaddr*) &client_addr, &alen);
         if (receiveResult < 1) {
           return -2;
         }

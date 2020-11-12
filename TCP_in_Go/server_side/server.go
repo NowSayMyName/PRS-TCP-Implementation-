@@ -4,10 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 )
 
 func main() {
+	f, err := os.Create("newFile.txt")
+	if err != nil {
+		fmt.Printf("Couldn't create file %v\n", err)
+		return
+	}
+	defer f.Close()
+
 	addr := net.UDPAddr{
 		Port: 5000,
 		IP:   net.ParseIP("127.0.0.1"),
@@ -34,7 +42,10 @@ func main() {
 				fmt.Printf("Couldn't read data \n%v", err)
 			}
 			fmt.Println(string(transmitionBuffer))
-
+			_, err := f.WriteString(string(transmitionBuffer))
+			if err != nil {
+				fmt.Printf("Couldn't write in file \n%v", err)
+			}
 			//acknowledging reception
 			if string(transmitionBuffer) != "" {
 				_, err = controlConn.WriteTo([]byte("ACK"), controlAddr)

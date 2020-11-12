@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -23,7 +27,7 @@ func main() {
 		if err = f.Close(); err != nil {
 			log.Fatal(err)
 		}
-	}
+	}()
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 100)
 	transmitionBuffer := make([]byte, 100)
@@ -41,22 +45,21 @@ func main() {
 		}
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
-		_, err = fmt.Fprintf(conn, string(b[0:n]))
+		_, err = fmt.Fprintf(conn, string(readingBuffer[0:n]))
 
 		//Waiting for ACK
-		acknowledged=false
-		while(!acknowledged){
-			_, err = conn.Read(buffer)
+		acknowledged := false
+		for !acknowledged {
+			_, err = conn.Read(transmitionBuffer)
 			if err != nil {
-				fmt.Printf("Error transmitting \n%v", err)
-				return nil, 0, err
+				log.Fatal(err)
 			}
-		
-			fmt.Printf("%s\n", buffer)
-			runes := []rune(string(buffer))
-		
-			if string(runes[0:3]) = "ACK " {
-				acknowledged=true
+
+			fmt.Printf("%s\n", transmitionBuffer)
+			runes := []rune(string(transmitionBuffer))
+
+			if string(runes[0:3]) == "ACK " {
+				acknowledged = true
 
 			}
 		}

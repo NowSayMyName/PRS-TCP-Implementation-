@@ -22,10 +22,12 @@ func main() {
 
 	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
+		fmt.Printf("Some error %v\n", err)
 		log.Fatal(err)
 	}
 	defer func() {
 		if err = f.Close(); err != nil {
+			fmt.Printf("Some error %v\n", err)
 			log.Fatal(err)
 		}
 	}()
@@ -48,20 +50,21 @@ func main() {
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
 		_, err = fmt.Fprintf(dataConn, string(readingBuffer[0:n]))
-
+		if err != nil {
+			fmt.Printf("Some error %v\n", err)
+			break
+		}
 		//Waiting for ACK
 		acknowledged := false
 		for !acknowledged {
 			_, err = controlConn.Read(transmitionBuffer)
 			if err != nil {
+				fmt.Printf("Some error %v\n", err)
 				log.Fatal(err)
 			}
+			fmt.Printf("waiting for ACK  \n")
 
-			fmt.Printf("waiting for ACK")
-
-			runes := []rune(string(transmitionBuffer))
-
-			if string(runes[0:3]) == "ACK" {
+			if string(transmitionBuffer[0:3]) == "ACK" {
 				acknowledged = true
 			}
 		}

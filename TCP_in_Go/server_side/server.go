@@ -27,21 +27,24 @@ func main() {
 
 		transmitting := true
 		transmitionBuffer := make([]byte, 100)
+		//Receiving
 		for transmitting {
 			_, err = dataConn.Read(transmitionBuffer)
 			if err != nil {
 				fmt.Printf("Some error %v\n", err)
 			}
 			fmt.Println(string(transmitionBuffer))
-			runes := []rune(string(transmitionBuffer))
+
+			//acknowledging reception
 			if string(transmitionBuffer) != "" {
-				_, err = controlConn.WriteTo([]byte(string("ACK")), &addr)
+				_, err = controlConn.WriteTo([]byte("ACK"), &addr)
 				if err != nil {
 					fmt.Printf("Some error %v\n", err)
 				}
 			}
 
-			if string(runes[0:3]) == "EOT" {
+			//End of transmition
+			if string(transmitionBuffer[0:3]) == "EOT" {
 				transmitting = false
 				break
 			}

@@ -12,12 +12,11 @@ import (
 )
 
 func main() {
-	conn, port, err := connectionToServer("127.0.0.1" + ":" + "5000")
+	conn, _, err := connectionToServer("127.0.0.1" + ":" + "5000")
 	if err != nil {
 		fmt.Printf("Could not connect %v", err)
 	}
 	defer conn.Close()
-	fmt.Printf("Could not connect %v", port)
 
 	f, err := os.Open("stuff/stuff/test123.txt")
 	if err != nil {
@@ -112,6 +111,5 @@ func connectionToServer(address string) (conn *net.UDPConn, controlPort int, err
 	}
 
 	controlPort, _ = strconv.Atoi(string(runes[8:12]))
-	fmt.Printf(string(runes[8:12]))
 	return conn, controlPort, nil
 }

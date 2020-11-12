@@ -20,7 +20,7 @@ func main() {
 	defer controlConn.Close()
 	defer dataConn.Close()
 
-	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
+	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,11 +57,9 @@ func main() {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("waiting for ACK")
+			fmt.Printf("waiting for ACK\n")
 
-			runes := []rune(string(transmitionBuffer))
-
-			if string(runes[0:3]) == "ACK" {
+			if string(transmitionBuffer[0:3]) == "ACK" {
 				acknowledged = true
 			}
 		}
@@ -106,7 +104,7 @@ func connectionToServer(address string, controlPort string) (controlConn *net.UD
 		return nil, nil, errors.New("Could not receive SYN-ACK")
 	}
 
-	fmt.Printf("ACK\n")
+	fmt.Printf("ACK\n\n")
 	_, err = fmt.Fprintf(controlConn, "ACK")
 	if err != nil {
 		fmt.Printf("Could not send ACK \n%v", err)

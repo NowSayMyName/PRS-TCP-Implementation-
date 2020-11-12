@@ -33,33 +33,12 @@ func main() {
 			return
 		}
 
-		transmitting := true
-		transmitionBuffer := make([]byte, 100)
-		//Receiving
-		for transmitting {
-			_, err = dataConn.Read(transmitionBuffer)
-			if err != nil {
-				fmt.Printf("Couldn't read data \n%v", err)
-			}
-			fmt.Println(string(transmitionBuffer))
-			_, err := f.WriteString(string(transmitionBuffer))
-			if err != nil {
-				fmt.Printf("Couldn't write in file \n%v", err)
-			}
-			//acknowledging reception
-			if string(transmitionBuffer) != "" {
-				_, err = controlConn.WriteTo([]byte("ACK"), controlAddr)
-				if err != nil {
-					fmt.Printf("Couldn't write to control \n%v", err)
-				}
-			}
+		windowSize := 1
 
-			//End of transmition
-			if string(transmitionBuffer[0:3]) == "EOT" {
-				transmitting = false
-				break
-			}
-		}
+		transmitting := true
+
+		go readControlPort(controlConn, &windowSize, &transmitting)
+		go receiveData(controlConn, &controlAddr, dataConn, &transmitting, f)
 	}
 }
 
@@ -113,23 +92,44 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 	return controlAddr, dataConn, nil
 }
 
-func receiveData(controlConn *net.UDPConn, controlAddr *net.Addr, dataConn *net.UDPConn) (err error) {
+func receiveData(controlConn *net.UDPConn, controlAddr *net.Addr, dataConn *net.UDPConn, transmitting *bool, file *os.File) {
 	buffer := make([]byte, 100)
 
-	for {
+	for *transmitting {
 		_, err := dataConn.Read(buffer)
 
 		if err != nil {
 			fmt.Printf("Coulnd't read data \n%v", err)
-			return err
 		}
 
 		if string(buffer) != "" {
+			_, err := file.WriteString(string(buffer))
+			if err != nil {
+				fmt.Printf("Couldn't write in file \n%v", err)
+			}
+
 			_, err = controlConn.WriteTo([]byte("ACK"), *controlAddr)
 			if err != nil {
 				fmt.Printf("Couldn't write to control \n%v", err)
-				return err
 			}
+		}
+	}
+}
+
+func readControlPort(controlConn *net.UDPConn, windowSize *int, transmitting *bool) {
+	buffer := make([]byte, 100)
+
+	for *transmitting {
+		_, err := controlConn.Read(buffer)
+
+		if err != nil {
+			fmt.Printf("Reading error \n%v", err)
+		}
+
+		if string(buffer[0:3]) == "ACK" {
+			*windowSize++
+		} else if string(buffer[0:3]) == "EOT" {
+			*transmitting = false
 		}
 	}
 }

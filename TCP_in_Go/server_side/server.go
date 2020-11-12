@@ -19,7 +19,7 @@ func main() {
 		return
 	}
 	for {
-		dataConn, err := acceptConnection(controlConn, controlPort)
+		controlAddr, dataConn, err := acceptConnection(controlConn, controlPort)
 		if err != nil {
 			fmt.Printf("Some error %v\n", err)
 			return
@@ -37,7 +37,7 @@ func main() {
 
 			//acknowledging reception
 			if string(transmitionBuffer) != "" {
-				_, err = controlConn.WriteTo([]byte("ACK"), &addr)
+				_, err = controlConn.WriteTo([]byte("ACK"), controlAddr)
 				if err != nil {
 					fmt.Printf("Some error %v\n", err)
 				}
@@ -53,19 +53,19 @@ func main() {
 }
 
 /** waits for a connection and sends the control port number*/
-func acceptConnection(controlConn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
+func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.Addr, dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
 	_, addr, err := controlConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
-		return nil, err
+		return nil, nil, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return nil, errors.New("Could not receive SYN")
+		return nil, nil, errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK " + strconv.Itoa(dataPort)
@@ -74,18 +74,18 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (dataConn *net.UDP
 	_, err = controlConn.WriteTo([]byte(str), addr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	_, err = controlConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return nil, err
+		return nil, nil, err
 	}
-	fmt.Printf("%s\n", buffer)
+	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return nil, errors.New("Couldn't receive ACK")
+		return nil, nil, errors.New("Couldn't receive ACK")
 	}
 
 	dataAddr := net.UDPAddr{
@@ -94,6 +94,22 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (dataConn *net.UDP
 	}
 
 	dataConn, err = net.ListenUDP("udp", &dataAddr)
+	if err != nil {
+		fmt.Printf("Couldn't listen %v\n", err)
+		return nil, nil, err
+	}
 
-	return dataConn, nil
+	return controlAddr, dataConn, nil
+}
+
+func readControlPort(controlConn *net.UDPConn, dataConn *net.UDPConn) (err error) {
+	for {
+		buffer := make([]byte, 100)
+		_, err := dataConn.Read(buffer)
+
+		if err != nil {
+			fmt.Printf("Reading error \n%v", err)
+			return err
+		}
+	}
 }

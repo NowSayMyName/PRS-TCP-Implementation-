@@ -30,7 +30,7 @@ func main() {
 func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 	buffer := make([]byte, 100)
 
-	_, err = conn.Read(buffer)
+	_, addr, err := conn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
 		return err
@@ -45,9 +45,9 @@ func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 	}
 
 	str := "SYN-ACK " + strconv.Itoa(controlPort)
+	fmt.Println(str)
 
-	fmt.Printf(str + "\n")
-	_, err = fmt.Fprintf(conn, str)
+	_, err = conn.WriteTo([]byte(str), addr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
 		return err
@@ -60,7 +60,9 @@ func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 	}
 	fmt.Printf("%s\n", buffer)
 
-	if string(buffer) != "ACK" {
+	runes = []rune(string(buffer))
+
+	if string(runes[0:3]) != "ACK" {
 		return errors.New("Couldn't receive ACK")
 	}
 	return

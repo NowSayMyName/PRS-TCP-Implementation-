@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	conn, port, err := connectionToServer("127.0.0.1", "5000")
+	conn, port, err := connectionToServer("127.0.0.1" + ":" + "5000")
 	if err != nil {
 		fmt.Printf("Could not connect %v", err)
 	}
@@ -67,8 +67,13 @@ func main() {
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/
-func connectionToServer(addr string, port string) (conn net.Conn, controlPort int, err error) {
-	conn, err = net.Dial("udp", addr+":"+port)
+func connectionToServer(address string) (conn *net.UDPConn, controlPort int, err error) {
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	conn, err = net.DialUDP("udp", nil, addr)
 	if err != nil {
 		fmt.Printf("Could not dial \n%v", err)
 		return nil, 0, err
@@ -92,8 +97,8 @@ func connectionToServer(addr string, port string) (conn net.Conn, controlPort in
 	fmt.Printf("%s\n", buffer)
 	runes := []rune(string(buffer))
 
-	if string(runes[0:7]) != "SYN-ACK " {
-		fmt.Printf(string(runes[0:7])+" %v", err)
+	if string(runes[0:8]) != "SYN-ACK " {
+		fmt.Printf(string(runes[0:8]))
 		return nil, 0, errors.New("Could not receive SYN-ACK")
 	}
 
@@ -104,7 +109,7 @@ func connectionToServer(addr string, port string) (conn net.Conn, controlPort in
 		return nil, 0, err
 	}
 
-	controlPort, _ = strconv.Atoi(string(runes[9:12]))
-	fmt.Printf(string(runes[9:12]))
+	controlPort, _ = strconv.Atoi(string(runes[8:12]))
+	fmt.Printf(string(runes[8:12]))
 	return conn, controlPort, nil
 }

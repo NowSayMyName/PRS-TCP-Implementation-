@@ -52,7 +52,7 @@ func main() {
 		//Waiting for ACK
 		acknowledged := false
 		for !acknowledged {
-			_, err = dataConn.Read(transmitionBuffer)
+			_, err = controlConn.Read(transmitionBuffer)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -66,7 +66,7 @@ func main() {
 			}
 		}
 	}
-	_, err = fmt.Fprintf(dataConn, "EOT")
+	_, err = fmt.Fprintf(controlConn, "EOT")
 
 }
 

@@ -49,10 +49,10 @@ func main() {
 }
 
 /** waits for a connection and sends the control port number*/
-func acceptConnection(conn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
+func acceptConnection(controlConn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
-	_, addr, err := conn.ReadFrom(buffer)
+	_, addr, err := controlConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
 		return nil, err
@@ -67,13 +67,13 @@ func acceptConnection(conn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, e
 	str := "SYN-ACK " + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
-	_, err = conn.WriteTo([]byte(str), addr)
+	_, err = controlConn.WriteTo([]byte(str), addr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
 		return nil, err
 	}
 
-	_, err = conn.Read(buffer)
+	_, err = controlConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
 		return nil, err

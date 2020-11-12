@@ -34,7 +34,7 @@ func main() {
 			fmt.Println(string(transmitionBuffer))
 			runes := []rune(string(transmitionBuffer))
 			if string(transmitionBuffer) != "" {
-				_, err = ser.WriteTo([]byte(string("ACK")), &addr)
+				_, err = controlConn.WriteTo([]byte(string("ACK")), &addr)
 				if err != nil {
 					fmt.Printf("Some error %v\n", err)
 				}

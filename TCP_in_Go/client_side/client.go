@@ -8,15 +8,17 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 )
 
 func main() {
-	conn, _, err := connectionToServer("127.0.0.1" + ":" + "5000")
+	address := "127.0.0.1"
+	controlPort := "5000"
+	controlConn, dataConn, err := connectionToServer(address, controlPort)
 	if err != nil {
 		fmt.Printf("Could not connect %v", err)
 	}
-	defer conn.Close()
+	defer controlConn.Close()
+	defer dataConn.Close()
 
 	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
@@ -27,6 +29,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 100)
 	transmitionBuffer := make([]byte, 100)
@@ -44,12 +47,12 @@ func main() {
 		}
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
-		_, err = fmt.Fprintf(conn, string(readingBuffer[0:n]))
+		_, err = fmt.Fprintf(dataConn, string(readingBuffer[0:n]))
 
 		//Waiting for ACK
 		acknowledged := false
 		for !acknowledged {
-			_, err = conn.Read(transmitionBuffer)
+			_, err = dataConn.Read(transmitionBuffer)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -63,53 +66,80 @@ func main() {
 			}
 		}
 	}
-	_, err = fmt.Fprintf(conn, "EOT")
+	_, err = fmt.Fprintf(dataConn, "EOT")
 
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/
-func connectionToServer(address string) (conn *net.UDPConn, controlPort int, err error) {
-	addr, err := net.ResolveUDPAddr("udp", address)
+func connectionToServer(address string, controlPort string) (controlConn *net.UDPConn, dataConn *net.UDPConn, err error) {
+	addr, err := net.ResolveUDPAddr("udp", address+":"+controlPort)
 	if err != nil {
-		return nil, 0, err
+		fmt.Printf("Could not resolve address \n%v", err)
+		return nil, nil, err
 	}
 
-	conn, err = net.DialUDP("udp", nil, addr)
+	controlConn, err = net.DialUDP("udp", nil, addr)
 	if err != nil {
 		fmt.Printf("Could not dial \n%v", err)
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	buffer := make([]byte, 100)
 
 	fmt.Printf("SYN\n")
-	_, err = fmt.Fprintf(conn, "SYN")
+	_, err = fmt.Fprintf(controlConn, "SYN")
 	if err != nil {
 		fmt.Printf("Could not send SYN \n%v", err)
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	_, err = conn.Read(buffer)
+	_, err = controlConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	fmt.Printf("%s\n", buffer)
-	runes := []rune(string(buffer))
 
-	if string(runes[0:8]) != "SYN-ACK " {
-		fmt.Printf(string(runes[0:8]))
-		return nil, 0, errors.New("Could not receive SYN-ACK")
+	if string(buffer[0:8]) != "SYN-ACK " {
+		fmt.Printf(string(buffer[0:8]))
+		return nil, nil, errors.New("Could not receive SYN-ACK")
 	}
 
 	fmt.Printf("ACK\n")
-	_, err = fmt.Fprintf(conn, "ACK")
+	_, err = fmt.Fprintf(controlConn, "ACK")
 	if err != nil {
 		fmt.Printf("Could not send ACK \n%v", err)
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	controlPort, _ = strconv.Atoi(string(runes[8:12]))
-	return conn, controlPort, nil
+	addr, err = net.ResolveUDPAddr("udp", address+":"+string(buffer[8:12]))
+	if err != nil {
+		fmt.Printf("Could not resolve address \n%v", err)
+		return nil, nil, err
+	}
+
+	dataConn, err = net.DialUDP("udp", nil, addr)
+	if err != nil {
+		fmt.Printf("Could not dial \n%v", err)
+		return nil, nil, err
+	}
+
+	return controlConn, dataConn, nil
+}
+
+func readControlPort(conn *net.UDPConn, windowSize *int) (err error) {
+	for {
+		buffer := make([]byte, 100)
+		_, err := conn.Read(buffer)
+
+		if err != nil {
+			fmt.Printf("Reading error \n%v", err)
+			return err
+		}
+
+		if string(buffer[0:3]) == "ACK" {
+			*windowSize++
+		}
+	}
 }

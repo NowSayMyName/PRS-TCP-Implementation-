@@ -59,10 +59,8 @@ func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 	}
 	fmt.Printf("%s\n", buffer)
 
-	runes := []rune(string(buffer))
-
-	if string(runes[0:3]) != "SYN" {
-		fmt.Printf(string(runes[0:3])+" %v", err)
+	if string(buffer[0:3]) != "SYN" {
+		fmt.Printf(string(buffer[0:3])+" %v", err)
 		return errors.New("Could not receive SYN")
 	}
 
@@ -82,9 +80,7 @@ func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 	}
 	fmt.Printf("%s\n", buffer)
 
-	runes = []rune(string(buffer))
-
-	if string(runes[0:3]) != "ACK" {
+	if string(buffer[0:3]) != "ACK" {
 		return errors.New("Couldn't receive ACK")
 	}
 	return

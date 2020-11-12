@@ -111,6 +111,5 @@ func connectionToServer(address string) (conn *net.UDPConn, controlPort int, err
 	}
 
 	controlPort, _ = strconv.Atoi(string(runes[8:12]))
-	fmt.Printf(string(runes[8:12]))
 	return conn, controlPort, nil
 }

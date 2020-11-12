@@ -12,13 +12,14 @@ func main() {
 		Port: 5000,
 		IP:   net.ParseIP("127.0.0.1"),
 	}
-	ser, err := net.ListenUDP("udp", &addr)
+	controlPort := 5001
+	controlConn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
-		fmt.Printf("Some error %v\n", err)
+		fmt.Printf("Couldn't listen %v\n", err)
 		return
 	}
 	for {
-		dataConn, err := acceptConnection(ser, 5001)
+		dataConn, err := acceptConnection(controlConn, controlPort)
 		if err != nil {
 			fmt.Printf("Some error %v\n", err)
 			return

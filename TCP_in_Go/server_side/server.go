@@ -84,6 +84,22 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (dataConn *net.UDP
 	}
 
 	dataConn, err = net.ListenUDP("udp", &dataAddr)
+	if err != nil {
+		fmt.Printf("Couldn't listen %v\n", err)
+		return nil, err
+	}
 
 	return dataConn, nil
+}
+
+func readControlPort(controlConn *net.UDPConn, dataConn *net.UDPConn) (err error) {
+	for {
+		buffer := make([]byte, 100)
+		_, err := dataConn.Read(buffer)
+
+		if err != nil {
+			fmt.Printf("Reading error \n%v", err)
+			return err
+		}
+	}
 }

@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 	for {
-		err := acceptConnection(ser, 5001)
+		dataConn, err := acceptConnection(ser, 5001)
 		if err != nil {
 			fmt.Printf("Some error %v\n", err)
 			return
@@ -27,7 +27,7 @@ func main() {
 		transmitting := true
 		transmitionBuffer := make([]byte, 100)
 		for transmitting {
-			_, err = ser.Read(transmitionBuffer)
+			_, err = dataConn.Read(transmitionBuffer)
 			if err != nil {
 				fmt.Printf("Some error %v\n", err)
 			}
@@ -42,19 +42,19 @@ func main() {
 }
 
 /** waits for a connection and sends the control port number*/
-func acceptConnection(conn *net.UDPConn, dataPort int) (err error) {
+func acceptConnection(conn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
 	_, addr, err := conn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
-		return err
+		return nil, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return errors.New("Could not receive SYN")
+		return nil, errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK " + strconv.Itoa(dataPort)
@@ -63,18 +63,26 @@ func acceptConnection(conn *net.UDPConn, dataPort int) (err error) {
 	_, err = conn.WriteTo([]byte(str), addr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return err
+		return nil, err
 	}
 
 	_, err = conn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return err
+		return nil, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return errors.New("Couldn't receive ACK")
+		return nil, errors.New("Couldn't receive ACK")
 	}
-	return
+
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP("127.0.0.1"),
+	}
+
+	dataConn, err = net.ListenUDP("udp", &dataAddr)
+
+	return dataConn, nil
 }

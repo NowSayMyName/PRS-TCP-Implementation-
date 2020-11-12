@@ -132,8 +132,9 @@ func connectionToServer(address string, controlPort string) (controlConn *net.UD
 }
 
 func readControlPort(controlConn *net.UDPConn, windowSize *int) (err error) {
+	buffer := make([]byte, 100)
+
 	for {
-		buffer := make([]byte, 100)
 		_, err := controlConn.Read(buffer)
 
 		if err != nil {

@@ -113,14 +113,23 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 	return controlAddr, dataConn, nil
 }
 
-func readControlPort(controlConn *net.UDPConn, dataConn *net.UDPConn) (err error) {
+func receiveData(controlConn *net.UDPConn, controlAddr *net.Addr, dataConn *net.UDPConn) (err error) {
+	buffer := make([]byte, 100)
+
 	for {
-		buffer := make([]byte, 100)
 		_, err := dataConn.Read(buffer)
 
 		if err != nil {
-			fmt.Printf("Reading error \n%v", err)
+			fmt.Printf("Coulnd't read data \n%v", err)
 			return err
+		}
+
+		if string(buffer) != "" {
+			_, err = controlConn.WriteTo([]byte("ACK"), *controlAddr)
+			if err != nil {
+				fmt.Printf("Couldn't write to control \n%v", err)
+				return err
+			}
 		}
 	}
 }

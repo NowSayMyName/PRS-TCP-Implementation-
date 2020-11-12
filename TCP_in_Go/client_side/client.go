@@ -19,7 +19,7 @@ func main() {
 	defer conn.Close()
 	fmt.Printf("Could not connect %v", port)
 
-	f, err := os.Open("C:/Users/Melvil/Desktop/INSA/PRS/PRS_TCP_Implementation_/TCP_in_Go/test.mp3")
+	f, err := os.Open("stuff/stuff/test123.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,12 +58,14 @@ func main() {
 			fmt.Printf("%s\n", transmitionBuffer)
 			runes := []rune(string(transmitionBuffer))
 
-			if string(runes[0:3]) == "ACK " {
+			if string(runes[0:3]) == "ACK" {
 				acknowledged = true
 
 			}
 		}
 	}
+	_, err = fmt.Fprintf(conn, "EOT")
+
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/

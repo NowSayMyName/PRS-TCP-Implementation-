@@ -23,6 +23,21 @@ func main() {
 			fmt.Printf("Some error %v\n", err)
 			return
 		}
+
+		transmitting := true
+		transmitionBuffer := make([]byte, 100)
+		for transmitting {
+			_, err = ser.Read(transmitionBuffer)
+			if err != nil {
+				fmt.Printf("Some error %v\n", err)
+			}
+			fmt.Println(string(transmitionBuffer))
+			runes := []rune(string(transmitionBuffer))
+			if string(runes[0:3]) == "EOT" {
+				transmitting = false
+				break
+			}
+		}
 	}
 }
 

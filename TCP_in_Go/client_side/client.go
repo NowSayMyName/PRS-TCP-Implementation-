@@ -128,10 +128,10 @@ func connectionToServer(address string, controlPort string) (controlConn *net.UD
 	return controlConn, dataConn, nil
 }
 
-func readControlPort(conn *net.UDPConn, windowSize *int) (err error) {
+func readControlPort(controlConn *net.UDPConn, windowSize *int) (err error) {
 	for {
 		buffer := make([]byte, 100)
-		_, err := conn.Read(buffer)
+		_, err := controlConn.Read(buffer)
 
 		if err != nil {
 			fmt.Printf("Reading error \n%v", err)

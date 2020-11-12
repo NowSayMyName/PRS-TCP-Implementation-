@@ -42,7 +42,7 @@ func main() {
 }
 
 /** waits for a connection and sends the control port number*/
-func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
+func acceptConnection(conn *net.UDPConn, dataPort int) (err error) {
 	buffer := make([]byte, 100)
 
 	_, addr, err := conn.ReadFrom(buffer)
@@ -57,7 +57,7 @@ func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
 		return errors.New("Could not receive SYN")
 	}
 
-	str := "SYN-ACK " + strconv.Itoa(controlPort)
+	str := "SYN-ACK " + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
 	_, err = conn.WriteTo([]byte(str), addr)

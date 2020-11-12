@@ -34,6 +34,13 @@ func main() {
 			}
 			fmt.Println(string(transmitionBuffer))
 			runes := []rune(string(transmitionBuffer))
+			if string(transmitionBuffer) != "" {
+				_, err = controlConn.WriteTo([]byte(string("ACK")), &addr)
+				if err != nil {
+					fmt.Printf("Some error %v\n", err)
+				}
+			}
+
 			if string(runes[0:3]) == "EOT" {
 				transmitting = false
 				break

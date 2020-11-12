@@ -20,7 +20,7 @@ func main() {
 	defer controlConn.Close()
 	defer dataConn.Close()
 
-	f, err := os.Open("stuff/stuff/test123.txt")
+	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,21 +52,21 @@ func main() {
 		//Waiting for ACK
 		acknowledged := false
 		for !acknowledged {
-			_, err = dataConn.Read(transmitionBuffer)
+			_, err = controlConn.Read(transmitionBuffer)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("%s\n", transmitionBuffer)
+			fmt.Printf("waiting for ACK")
+
 			runes := []rune(string(transmitionBuffer))
 
 			if string(runes[0:3]) == "ACK" {
 				acknowledged = true
-
 			}
 		}
 	}
-	_, err = fmt.Fprintf(dataConn, "EOT")
+	_, err = fmt.Fprintf(controlConn, "EOT")
 
 }
 

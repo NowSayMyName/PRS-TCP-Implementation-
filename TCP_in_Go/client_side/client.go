@@ -18,7 +18,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	f, err := os.Open("stuff/stuff/test123.txt")
+	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,12 +54,12 @@ func main() {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("%s\n", transmitionBuffer)
+			fmt.Printf("waiting for ACK")
+
 			runes := []rune(string(transmitionBuffer))
 
 			if string(runes[0:3]) == "ACK" {
 				acknowledged = true
-
 			}
 		}
 	}

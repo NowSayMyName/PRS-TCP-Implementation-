@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("C:/Users/Melvil/Desktop/INSA/PRS/PRS_TCP_Implementation_/TCP_in_Go/test.mp3")
+	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
 	if err != nil {
 		log.Fatal(err)
 	}

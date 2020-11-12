@@ -4,21 +4,21 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 )
 
 func main() {
-	conn, port, err := connectionToServer("127.0.0.1:5000")
+	conn, port, err := connectionToServer("127.0.0.1", "5000")
 	if err != nil {
 		fmt.Printf("Could not connect %v", err)
 	}
 	defer conn.Close()
 	fmt.Printf("Could not connect %v", port)
-
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/
-func connectionToServer(addr string) (conn net.Conn, controlPort int, err error) {
-	conn, err = net.Dial("udp", addr)
+func connectionToServer(addr string, port string) (conn net.Conn, controlPort int, err error) {
+	conn, err = net.Dial("udp", addr+":"+port)
 	if err != nil {
 		fmt.Printf("Could not dial \n%v", err)
 		return nil, 0, err
@@ -54,6 +54,7 @@ func connectionToServer(addr string) (conn net.Conn, controlPort int, err error)
 		return nil, 0, err
 	}
 
+	controlPort, _ = strconv.Atoi(string(runes[9:12]))
 	fmt.Printf(string(runes[9:12]))
-	return conn, 7, nil
+	return conn, controlPort, nil
 }

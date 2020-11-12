@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
 )
 
 func main() {
@@ -22,4 +24,44 @@ func main() {
 			return
 		}
 	}
+}
+
+/** waits for a connection and sends the control port number*/
+func acceptConnection(conn *net.UDPConn, controlPort int) (err error) {
+	buffer := make([]byte, 100)
+
+	_, err = conn.Read(buffer)
+	if err != nil {
+		fmt.Printf("Could not receive SYN-ACK \n%v", err)
+		return err
+	}
+	fmt.Printf("%s\n", buffer)
+
+	runes := []rune(string(buffer))
+
+	if string(runes[0:3]) != "SYN" {
+		fmt.Printf(string(runes[0:3])+" %v", err)
+		return errors.New("Could not receive SYN")
+	}
+
+	str := "SYN-ACK " + strconv.Itoa(controlPort)
+
+	fmt.Printf(str + "\n")
+	_, err = fmt.Fprintf(conn, str)
+	if err != nil {
+		fmt.Printf("Could not send SYN-ACK \n%v", err)
+		return err
+	}
+
+	_, err = conn.Read(buffer)
+	if err != nil {
+		fmt.Printf("Could not receive ACK \n%v", err)
+		return err
+	}
+	fmt.Printf("%s\n", buffer)
+
+	if string(buffer) != "ACK" {
+		return errors.New("Couldn't receive ACK")
+	}
+	return
 }

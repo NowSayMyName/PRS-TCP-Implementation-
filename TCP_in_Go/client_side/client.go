@@ -14,6 +14,53 @@ func main() {
 	}
 	defer conn.Close()
 	fmt.Printf("Could not connect %v", port)
+
+	f, err := os.Open("C:/Users/Melvil/Desktop/INSA/PRS/PRS_TCP_Implementation_/TCP_in_Go/test.mp3")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	r := bufio.NewReader(f)
+	readingBuffer := make([]byte, 100)
+	transmitionBuffer := make([]byte, 100)
+
+	for {
+		//Reading the file
+		fmt.Println("[   NEW PACKET   ]")
+		n, err := r.Read(readingBuffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			break
+		}
+		//Sending fragment
+		fmt.Println(string(readingBuffer[0:n]))
+		_, err = fmt.Fprintf(conn, string(b[0:n]))
+
+		//Waiting for ACK
+		acknowledged=false
+		while(!acknowledged){
+			_, err = conn.Read(buffer)
+			if err != nil {
+				fmt.Printf("Error transmitting \n%v", err)
+				return nil, 0, err
+			}
+		
+			fmt.Printf("%s\n", buffer)
+			runes := []rune(string(buffer))
+		
+			if string(runes[0:3]) = "ACK " {
+				acknowledged=true
+
+			}
+		}
+	}
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/

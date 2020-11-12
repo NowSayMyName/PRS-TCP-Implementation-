@@ -17,7 +17,7 @@ func main() {
 		if err = f.Close(); err != nil {
 			log.Fatal(err)
 		}
-	}()
+	}
 	r := bufio.NewReader(f)
 	b := make([]byte, 100)
 	for {

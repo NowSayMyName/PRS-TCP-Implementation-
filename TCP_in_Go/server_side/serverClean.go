@@ -14,8 +14,7 @@ func getArgs() (ipaddress string, portNumber int) {
 		fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
 		os.Exit(1)
 	} else {
-		fmt.Printf("#DEBUG ARGS Server address : %s\n", os.Args[2])
-		portNumber, err := strconv.Atoi(os.Args[1])
+		portNumber, err := strconv.Atoi(os.Args[2])
 		if err != nil {
 			fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
 			os.Exit(1)
@@ -37,6 +36,7 @@ func main() {
 
 	dataPort := portNumber
 	publicConn, err := net.ListenUDP("udp", &publicAddr)
+	fmt.Printf("Starting server on address: %s:%d\n", ipAddress, portNumber)
 	if err != nil {
 		fmt.Printf("Couldn't listen %v\n", err)
 		return
@@ -49,9 +49,6 @@ func main() {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
-
-		fmt.Printf("HERE\n")
-
 		go handleConnection(dataPort, ipAddress)
 	}
 }
@@ -71,6 +68,8 @@ func handleConnection(dataPort int, ipAddress string) (err error) {
 	windowSize := 1
 	transmitting := true
 	buffer := make([]byte, 100)
+
+	fmt.Printf("HERE\n")
 
 	_, remoteAddr, err := dataConn.ReadFrom(buffer)
 	if err != nil {

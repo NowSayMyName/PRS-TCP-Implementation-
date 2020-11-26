@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -86,18 +85,14 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Add
 	return publicAddr, dataConn, nil
 }
 
-func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) {
+/** takes a path to a file and sends it to the given address*/
+func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		fmt.Printf("Some error %v\n", err)
-		log.Fatal(err)
+		fmt.Printf("Error creating file %v\n", err)
+		return err
 	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			fmt.Printf("Some error %v\n", err)
-			log.Fatal(err)
-		}
-	}()
+	defer f.Close()
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 100)
@@ -107,26 +102,25 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) {
 		//Reading the file
 		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
-			fmt.Println("Error reading file:", err)
-			break
+			fmt.Println("Error reading file %v\n", err)
+			return err
 		}
+
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
 		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
 		if err != nil {
-			fmt.Printf("Some error %v\n", err)
-			break
+			fmt.Printf("Error sending packet %v\n", err)
+			return err
 		}
+
 		//Waiting for ACK
 		acknowledged := false
 		for !acknowledged {
 			_, err = dataConn.Read(transmitionBuffer)
 			if err != nil {
-				fmt.Printf("Some error %v\n", err)
+				fmt.Printf("Error reading data %v\n", err)
 				log.Fatal(err)
 			}
 			fmt.Printf("waiting for ACK  \n")
@@ -136,5 +130,10 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) {
 			}
 		}
 	}
-	_, err = fmt.Fprintf(dataConn, "EOT")
+	_, err = fmt.Fprintf(dataConn, "FIN")
+	if err != nil {
+		fmt.Printf("Error sending FIN")
+	}
+
+	return
 }

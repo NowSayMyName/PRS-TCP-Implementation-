@@ -29,7 +29,7 @@ func main() {
 	for {
 		controlAddr, dataConn, err := acceptConnection(controlConn, controlPort)
 		if err != nil {
-			fmt.Printf("Couldn't accept connection \n%v", err)
+			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
 
@@ -58,7 +58,7 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 		return nil, nil, errors.New("Could not receive SYN")
 	}
 
-	str := "SYN-ACK " + strconv.Itoa(dataPort)
+	str := "SYN-ACK" + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
 	_, err = controlConn.WriteTo([]byte(str), controlAddr)

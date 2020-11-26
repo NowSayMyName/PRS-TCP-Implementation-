@@ -30,28 +30,24 @@ func main() {
 		}
 
 		go handleConnection(dataConn)
-
-		// windowSize := 1
-
-		// transmitting := true
 	}
 }
 
 func handleConnection(dataConn *net.UDPConn) (err error) {
+	windowSize := 1
+	transmitting := true
 	buffer := make([]byte, 100)
 
 	_, remoteAddr, err := dataConn.ReadFrom(buffer)
 	if err != nil {
-		fmt.Printf("Could not receive SYN-ACK \n%v", err)
+		fmt.Printf("Could not receive path \n%v", err)
 		return err
 	}
 
 	fmt.Printf("%s\n", buffer)
-	err = sendFile(string(buffer), dataConn, remoteAddr)
-	if err != nil {
-		fmt.Printf("Could not send file \n%v", err)
-		return err
-	}
+	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, &windowSize)
+	go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
+
 	return
 }
 
@@ -106,7 +102,7 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPC
 }
 
 /** takes a path to a file and sends it to the given address*/
-func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
+func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		fmt.Printf("Error creating file %v\n", err)
@@ -116,7 +112,6 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 100)
-	transmitionBuffer := make([]byte, 100)
 
 	for {
 		//Reading the file
@@ -127,6 +122,9 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 			return err
 		}
 
+		for *windowSize == 0 {
+		}
+
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
 		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
@@ -134,26 +132,29 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 			fmt.Printf("Error sending packet %v\n", err)
 			return err
 		}
-
-		//Waiting for ACK
-		acknowledged := false
-		for !acknowledged {
-			_, err = dataConn.Read(transmitionBuffer)
-			if err != nil {
-				fmt.Printf("Error reading data %v\n", err)
-				return err
-			}
-			fmt.Printf("waiting for ACK  \n")
-
-			if string(transmitionBuffer[0:3]) == "ACK" {
-				acknowledged = true
-			}
-		}
+		*windowSize--
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
 		fmt.Printf("Error sending FIN")
 	}
 
+	return
+}
+
+func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+	transmitionBuffer := make([]byte, 100)
+
+	for *connected {
+		_, err := dataConn.Read(transmitionBuffer)
+		if err != nil {
+			fmt.Printf("Error reading packets %v\n", err)
+			return err
+		}
+
+		if string(transmitionBuffer[0:3]) == "ACK" {
+			*windowSize++
+		}
+	}
 	return
 }

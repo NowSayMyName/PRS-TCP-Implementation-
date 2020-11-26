@@ -22,8 +22,9 @@ func main() {
 		fmt.Printf("Couldn't listen %v\n", err)
 		return
 	}
+
 	for {
-		remoteAddr, dataConn, err := acceptConnection(publicConn, dataPort)
+		_, err := acceptConnection(publicConn, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
@@ -36,19 +37,19 @@ func main() {
 }
 
 /** waits for a connection and sends the public port number*/
-func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Addr, dataConn *net.UDPConn, err error) {
+func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
-	_, publicAddr, err = publicConn.ReadFrom(buffer)
+	_, publicAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
-		return nil, nil, err
+		return nil, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return nil, nil, errors.New("Could not receive SYN")
+		return nil, errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
@@ -57,18 +58,18 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Add
 	_, err = publicConn.WriteTo([]byte(str), publicAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return nil, nil, err
+		return nil, err
 	}
 	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return nil, nil, errors.New("Couldn't receive ACK")
+		return nil, errors.New("Couldn't receive ACK")
 	}
 
 	dataAddr := net.UDPAddr{
@@ -79,10 +80,10 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Add
 	dataConn, err = net.ListenUDP("udp", &dataAddr)
 	if err != nil {
 		fmt.Printf("Couldn't listen \n%v", err)
-		return nil, nil, err
+		return nil, err
 	}
 
-	return publicAddr, dataConn, nil
+	return dataConn, nil
 }
 
 /** takes a path to a file and sends it to the given address*/

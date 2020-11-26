@@ -12,7 +12,7 @@ import (
 func main() {
 	publicAddr := net.UDPAddr{
 		Port: 5000,
-		IP:   net.ParseIP("127.0.0.1"),
+		IP:   net.ParseIP("192.168.0.12"),
 	}
 
 	dataPort := 5001
@@ -28,6 +28,8 @@ func main() {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
+
+		fmt.Printf("HERE\n")
 
 		go handleConnection(dataConn)
 	}
@@ -89,7 +91,7 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPC
 
 	dataAddr := net.UDPAddr{
 		Port: dataPort,
-		IP:   net.ParseIP("127.0.0.1"),
+		IP:   net.ParseIP("192.168.0.12"),
 	}
 
 	dataConn, err = net.ListenUDP("udp", &dataAddr)

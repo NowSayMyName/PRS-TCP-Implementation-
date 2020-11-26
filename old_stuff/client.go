@@ -13,7 +13,9 @@ import (
 func main() {
 	address := "127.0.0.1"
 	controlPort := "5000"
+	dataPort := 5001
 	controlConn, dataConn, err := connectionToServer(address, controlPort)
+
 	if err != nil {
 		fmt.Printf("Could not connect %v", err)
 	}
@@ -49,7 +51,8 @@ func main() {
 		}
 		//Sending fragment
 		fmt.Println(string(readingBuffer[0:n]))
-		_, err = fmt.Fprintf(dataConn, string(readingBuffer[0:n]))
+		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
+
 		if err != nil {
 			fmt.Printf("Some error %v\n", err)
 			break

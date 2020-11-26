@@ -57,7 +57,7 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPC
 
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
-		fmt.Printf("Could not receive SYN-ACK \n%v", err)
+		fmt.Printf("Could not receive SYN \n%v", err)
 		return nil, err
 	}
 	fmt.Printf("%s\n", buffer)

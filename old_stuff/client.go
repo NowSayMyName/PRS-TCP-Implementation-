@@ -1,79 +1,19 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net"
-	"os"
 )
 
 func main() {
 	address := "127.0.0.1"
 	controlPort := "5000"
-	dataPort := 5001
-	controlConn, dataConn, err := connectionToServer(address, controlPort)
 
+	_, _, err := connectionToServer(address, controlPort)
 	if err != nil {
-		fmt.Printf("Could not connect %v", err)
+		fmt.Printf("Connection error \n%v", err)
 	}
-	defer controlConn.Close()
-	defer dataConn.Close()
-
-	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test.mp3")
-	if err != nil {
-		fmt.Printf("Some error %v\n", err)
-		log.Fatal(err)
-	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			fmt.Printf("Some error %v\n", err)
-			log.Fatal(err)
-		}
-	}()
-
-	r := bufio.NewReader(f)
-	readingBuffer := make([]byte, 100)
-	transmitionBuffer := make([]byte, 100)
-
-	for {
-		//Reading the file
-		fmt.Println("[   NEW PACKET   ]")
-		n, err := r.Read(readingBuffer)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Println("Error reading file:", err)
-			break
-		}
-		//Sending fragment
-		fmt.Println(string(readingBuffer[0:n]))
-		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
-
-		if err != nil {
-			fmt.Printf("Some error %v\n", err)
-			break
-		}
-		//Waiting for ACK
-		acknowledged := false
-		for !acknowledged {
-			_, err = controlConn.Read(transmitionBuffer)
-			if err != nil {
-				fmt.Printf("Some error %v\n", err)
-				log.Fatal(err)
-			}
-			fmt.Printf("waiting for ACK  \n")
-
-			if string(transmitionBuffer[0:3]) == "ACK" {
-				acknowledged = true
-			}
-		}
-	}
-	_, err = fmt.Fprintf(controlConn, "EOT")
-
 }
 
 /** renvoie le port utilisé par le serveur pour les messages de controles*/

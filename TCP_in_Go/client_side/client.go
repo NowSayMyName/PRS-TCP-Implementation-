@@ -20,7 +20,7 @@ func main() {
 	defer controlConn.Close()
 	defer dataConn.Close()
 
-	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test123.txt")
+	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/stuff/stuff/test.mp3")
 	if err != nil {
 		fmt.Printf("Some error %v\n", err)
 		log.Fatal(err)
@@ -104,8 +104,8 @@ func connectionToServer(address string, controlPort string) (controlConn *net.UD
 
 	fmt.Printf("%s\n", buffer)
 
-	if string(buffer[0:8]) != "SYN-ACK " {
-		fmt.Printf(string(buffer[0:8]))
+	if string(buffer[0:7]) != "SYN-ACK" {
+		fmt.Printf(string(buffer[0:7]))
 		return nil, nil, errors.New("Could not receive SYN-ACK")
 	}
 
@@ -116,7 +116,7 @@ func connectionToServer(address string, controlPort string) (controlConn *net.UD
 		return nil, nil, err
 	}
 
-	addr, err = net.ResolveUDPAddr("udp", address+":"+string(buffer[8:12]))
+	addr, err = net.ResolveUDPAddr("udp", address+":"+string(buffer[7:11]))
 	if err != nil {
 		fmt.Printf("Could not resolve address \n%v", err)
 		return nil, nil, err

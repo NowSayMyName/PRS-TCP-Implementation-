@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strconv"
@@ -24,11 +23,13 @@ func main() {
 	}
 
 	for {
-		_, err := acceptConnection(publicConn, dataPort)
+		dataConn, err := acceptConnection(publicConn, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
+
+		go handleConnection(dataConn)
 
 		// windowSize := 1
 
@@ -36,11 +37,15 @@ func main() {
 	}
 }
 
+func handleConnection(dataConn *net.UDPConn) {
+
+}
+
 /** waits for a connection and sends the public port number*/
 func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
-	_, publicAddr, err := publicConn.ReadFrom(buffer)
+	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
 		return nil, err
@@ -55,7 +60,7 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPC
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
-	_, err = publicConn.WriteTo([]byte(str), publicAddr)
+	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
 		return nil, err
@@ -104,7 +109,7 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
 		if err != nil {
-			fmt.Println("Error reading file %v\n", err)
+			fmt.Printf("Error reading file %v\n", err)
 			return err
 		}
 
@@ -122,7 +127,7 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 			_, err = dataConn.Read(transmitionBuffer)
 			if err != nil {
 				fmt.Printf("Error reading data %v\n", err)
-				log.Fatal(err)
+				return err
 			}
 			fmt.Printf("waiting for ACK  \n")
 
@@ -131,7 +136,7 @@ func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error)
 			}
 		}
 	}
-	_, err = fmt.Fprintf(dataConn, "FIN")
+	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
 		fmt.Printf("Error sending FIN")
 	}

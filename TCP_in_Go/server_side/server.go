@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	f, err := os.Create("newFile.txt")
+	f, err := os.Create("newFile.mp3")
 	if err != nil {
 		fmt.Printf("Couldn't create file %v\n", err)
 		return

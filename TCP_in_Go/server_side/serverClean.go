@@ -37,8 +37,22 @@ func main() {
 	}
 }
 
-func handleConnection(dataConn *net.UDPConn) {
+func handleConnection(dataConn *net.UDPConn) (err error) {
+	buffer := make([]byte, 100)
 
+	_, remoteAddr, err := dataConn.ReadFrom(buffer)
+	if err != nil {
+		fmt.Printf("Could not receive SYN-ACK \n%v", err)
+		return err
+	}
+
+	fmt.Printf("%s\n", buffer)
+	err = sendFile(string(buffer), dataConn, remoteAddr)
+	if err != nil {
+		fmt.Printf("Could not send file \n%v", err)
+		return err
+	}
+	return
 }
 
 /** waits for a connection and sends the public port number*/

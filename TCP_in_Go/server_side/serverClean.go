@@ -9,13 +9,33 @@ import (
 	"strconv"
 )
 
+func getArgs() (ipaddress string, portNumber int) {
+	if len(os.Args) != 3 {
+		fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
+		os.Exit(1)
+	} else {
+		fmt.Printf("#DEBUG ARGS Server address : %s\n", os.Args[2])
+		portNumber, err := strconv.Atoi(os.Args[1])
+		if err != nil {
+			fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
+			os.Exit(1)
+		} else {
+			return os.Args[1], portNumber
+		}
+
+	}
+	return "", -1
+}
+
 func main() {
+	ipAddress, portNumber := getArgs()
+
 	publicAddr := net.UDPAddr{
-		Port: 5000,
-		IP:   net.ParseIP("192.168.0.12"),
+		Port: portNumber,
+		IP:   net.ParseIP(ipAddress),
 	}
 
-	dataPort := 5001
+	dataPort := portNumber
 	publicConn, err := net.ListenUDP("udp", &publicAddr)
 	if err != nil {
 		fmt.Printf("Couldn't listen %v\n", err)
@@ -23,7 +43,8 @@ func main() {
 	}
 
 	for {
-		dataConn, err := acceptConnection(publicConn, dataPort)
+		dataPort++
+		err := acceptConnection(publicConn, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
@@ -31,11 +52,22 @@ func main() {
 
 		fmt.Printf("HERE\n")
 
-		go handleConnection(dataConn)
+		go handleConnection(dataPort, ipAddress)
 	}
 }
 
-func handleConnection(dataConn *net.UDPConn) (err error) {
+func handleConnection(dataPort int, ipAddress string) (err error) {
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP(ipAddress),
+	}
+
+	dataConn, err := net.ListenUDP("udp", &dataAddr)
+	if err != nil {
+		fmt.Printf("Couldn't listen \n%v", err)
+		return err
+	}
+
 	windowSize := 1
 	transmitting := true
 	buffer := make([]byte, 100)
@@ -54,19 +86,19 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 }
 
 /** waits for a connection and sends the public port number*/
-func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPConn, err error) {
+func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 	buffer := make([]byte, 100)
 
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
-		return nil, err
+		return err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return nil, errors.New("Could not receive SYN")
+		return errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
@@ -75,32 +107,21 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (dataConn *net.UDPC
 	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return nil, err
+		return err
 	}
 
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return nil, err
+		return err
 	}
 	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return nil, errors.New("Couldn't receive ACK")
+		return errors.New("Couldn't receive ACK")
 	}
 
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP("192.168.0.12"),
-	}
-
-	dataConn, err = net.ListenUDP("udp", &dataAddr)
-	if err != nil {
-		fmt.Printf("Couldn't listen \n%v", err)
-		return nil, err
-	}
-
-	return dataConn, nil
+	return nil
 }
 
 /** takes a path to a file and sends it to the given address*/

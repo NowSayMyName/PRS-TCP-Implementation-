@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net"
+	"os"
 	"strconv"
 )
 
@@ -26,12 +30,9 @@ func main() {
 			return
 		}
 
-		windowSize := 1
+		// windowSize := 1
 
-		transmitting := true
-
-		go readpublicPort(publicConn, &windowSize, &transmitting)
-		go receiveData(publicConn, &publicAddr, dataConn, &transmitting, f)
+		// transmitting := true
 	}
 }
 
@@ -83,4 +84,57 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Add
 	}
 
 	return publicAddr, dataConn, nil
+}
+
+func sendFile(path string, dataConn *net.UDPConn, dataAddr net.Addr) {
+	f, err := os.Open(path)
+	if err != nil {
+		fmt.Printf("Some error %v\n", err)
+		log.Fatal(err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			fmt.Printf("Some error %v\n", err)
+			log.Fatal(err)
+		}
+	}()
+
+	r := bufio.NewReader(f)
+	readingBuffer := make([]byte, 100)
+	transmitionBuffer := make([]byte, 100)
+
+	for {
+		//Reading the file
+		fmt.Println("[   NEW PACKET   ]")
+		n, err := r.Read(readingBuffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			break
+		}
+		//Sending fragment
+		fmt.Println(string(readingBuffer[0:n]))
+		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
+		if err != nil {
+			fmt.Printf("Some error %v\n", err)
+			break
+		}
+		//Waiting for ACK
+		acknowledged := false
+		for !acknowledged {
+			_, err = dataConn.Read(transmitionBuffer)
+			if err != nil {
+				fmt.Printf("Some error %v\n", err)
+				log.Fatal(err)
+			}
+			fmt.Printf("waiting for ACK  \n")
+
+			if string(transmitionBuffer[0:3]) == "ACK" {
+				acknowledged = true
+			}
+		}
+	}
+	_, err = fmt.Fprintf(dataConn, "EOT")
 }

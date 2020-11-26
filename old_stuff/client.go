@@ -20,11 +20,7 @@ func main() {
 	defer controlConn.Close()
 	defer dataConn.Close()
 
-<<<<<<< HEAD
 	f, err := os.Open("C:/Users/Melvil/go/src/github.com/MelvilB/PRS/PRS_TCP_Implementation/stuff/stuff/test.mp3")
-=======
-	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/stuff/stuff/test.mp3")
->>>>>>> 43706b1b352f75ea6b42072d2079bfe57bebba03
 	if err != nil {
 		fmt.Printf("Some error %v\n", err)
 		log.Fatal(err)

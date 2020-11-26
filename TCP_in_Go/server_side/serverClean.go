@@ -36,7 +36,7 @@ func main() {
 
 	dataPort := portNumber
 	publicConn, err := net.ListenUDP("udp", &publicAddr)
-	fmt.Printf("Starting server on address: %s:%d\n", ipAddress, portNumber)
+	fmt.Printf("Starting server on address: %s:%d\n\n", ipAddress, portNumber)
 	if err != nil {
 		fmt.Printf("Couldn't listen %v\n", err)
 		return
@@ -65,11 +65,11 @@ func handleConnection(dataPort int, ipAddress string) (err error) {
 		return err
 	}
 
+	fmt.Printf("Connection started on port %d\n", dataPort)
+
 	windowSize := 1
 	transmitting := true
 	buffer := make([]byte, 100)
-
-	fmt.Printf("HERE\n")
 
 	_, remoteAddr, err := dataConn.ReadFrom(buffer)
 	if err != nil {
@@ -77,7 +77,7 @@ func handleConnection(dataPort int, ipAddress string) (err error) {
 		return err
 	}
 
-	fmt.Printf("%s\n", buffer)
+	fmt.Printf("SEND FILE : %s\n", buffer)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, &windowSize)
 	go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 

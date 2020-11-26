@@ -8,18 +8,19 @@ import (
 )
 
 func main() {
-	addr := net.UDPAddr{
+	publicAddr := net.UDPAddr{
 		Port: 5000,
 		IP:   net.ParseIP("127.0.0.1"),
 	}
-	publicPort := 5001
-	publicConn, err := net.ListenUDP("udp", &addr)
+
+	dataPort := 5001
+	publicConn, err := net.ListenUDP("udp", &publicAddr)
 	if err != nil {
 		fmt.Printf("Couldn't listen %v\n", err)
 		return
 	}
 	for {
-		controlAddr, dataConn, err := acceptConnection(controlConn, controlPort)
+		remoteAddr, dataConn, err := acceptConnection(publicConn, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
@@ -29,16 +30,16 @@ func main() {
 
 		transmitting := true
 
-		go readControlPort(controlConn, &windowSize, &transmitting)
-		go receiveData(controlConn, &controlAddr, dataConn, &transmitting, f)
+		go readpublicPort(publicConn, &windowSize, &transmitting)
+		go receiveData(publicConn, &publicAddr, dataConn, &transmitting, f)
 	}
 }
 
-/** waits for a connection and sends the control port number*/
-func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.Addr, dataConn *net.UDPConn, err error) {
+/** waits for a connection and sends the public port number*/
+func acceptConnection(publicConn *net.UDPConn, dataPort int) (publicAddr net.Addr, dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
-	_, controlAddr, err = controlConn.ReadFrom(buffer)
+	_, publicAddr, err = publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN-ACK \n%v", err)
 		return nil, nil, err
@@ -53,13 +54,13 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
-	_, err = controlConn.WriteTo([]byte(str), controlAddr)
+	_, err = publicConn.WriteTo([]byte(str), publicAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
 		return nil, nil, err
 	}
 
-	_, err = controlConn.Read(buffer)
+	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
 		return nil, nil, err
@@ -81,5 +82,5 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 		return nil, nil, err
 	}
 
-	return controlAddr, dataConn, nil
+	return publicAddr, dataConn, nil
 }

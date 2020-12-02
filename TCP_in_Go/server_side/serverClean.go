@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func getArgs() (ipaddress string, portNumber int) {
@@ -128,22 +127,22 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	seqNum := 0
 
-	f, err := os.Open(path)
-	pwd, err := os.Getwd()
-	if err != nil {
-		fmt.Printf("Error finding absolute path %v\n", err)
-		return err
-	}
+	// pwd, err := os.Getwd()
+	// if err != nil {
+	// 	fmt.Printf("Error finding absolute path %v\n", err)
+	// 	return err
+	// }
 
-	finalPath := pwd + "/" + path
-	finalPath = strings.Replace(finalPath, "\n", "", -1)
-	finalPath = strings.Replace(finalPath, "\r", "", -1)
-	finalPath = strings.Replace(finalPath, "%", "", -1)
-	fmt.Printf("%s\n", finalPath)
+	// finalPath := pwd + "/" + path
+	// finalPath = strings.Replace(finalPath, "\n", "", -1)
+	// finalPath = strings.Replace(finalPath, "\r", "", -1)
+	// finalPath = strings.Replace(finalPath, "%", "", -1)
 
-	f, err := os.Open(finalPath)
+	// fmt.Printf("%s\n", finalPath)
+
+	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
-		fmt.Printf("Error creating file %v\n", err)
+		fmt.Printf("Error opening file %v\n", err)
 		return err
 	}
 	defer f.Close()

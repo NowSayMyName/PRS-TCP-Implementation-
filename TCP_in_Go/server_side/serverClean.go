@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func getArgs() (ipaddress string, portNumber int) {
@@ -131,8 +132,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		return err
 	}
 
-	fmt.Printf("%s/%s", pwd, path)
-	f, err := os.Open(pwd + "/" + path)
+	finalPath := pwd + "/" + path
+	finalPath = strings.Replace(finalPath, "\n", "", -1)
+	finalPath = strings.Replace(finalPath, "\r", "", -1)
+	finalPath = strings.Replace(finalPath, "%", "", -1)
+	fmt.Printf("%s\n", finalPath)
+
+	f, err := os.Open(finalPath)
 	if err != nil {
 		fmt.Printf("Error creating file %v\n", err)
 		return err

@@ -125,7 +125,14 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
-	f, err := os.Open(path)
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error finding absolute path %v\n", err)
+		return err
+	}
+
+	fmt.Printf("%s/%s", pwd, path)
+	f, err := os.Open(pwd + "/" + path)
 	if err != nil {
 		fmt.Printf("Error creating file %v\n", err)
 		return err

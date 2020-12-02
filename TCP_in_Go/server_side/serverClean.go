@@ -126,6 +126,9 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+	int seqNum := 0
+	
+	f, err := os.Open(path)
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf("Error finding absolute path %v\n", err)
@@ -161,8 +164,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		//Sending fragment
+		seq := strconv.Itoa(seqNum)
+		for i<6-seqNum/10 {
+			seq="0"+seq
+			fmt.Printf(seq)
+		}
 		fmt.Println(string(readingBuffer[0:n]))
-		_, err = dataConn.WriteTo(readingBuffer[0:n], dataAddr)
+		_, err = dataConn.WriteTo(seq+readingBuffer[0:n], dataAddr)
 		if err != nil {
 			fmt.Printf("Error sending packet %v\n", err)
 			return err

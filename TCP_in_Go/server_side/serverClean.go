@@ -128,7 +128,6 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	seqNum := 0
 
-	f, err := os.Open(path)
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf("Error finding absolute path %v\n", err)

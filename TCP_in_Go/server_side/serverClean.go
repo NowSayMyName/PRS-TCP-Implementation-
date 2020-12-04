@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 )
 
 func getArgs() (ipaddress string, portNumber int) {
@@ -188,33 +189,24 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		for *windowSize == 0 {
 		}
 
-		//Sending fragment
-		seq := strconv.Itoa(seqNum)
-		zeros := 6 - len(seq)
-		for i := 0; i < zeros; i++ {
-			seq = "0" + seq
-			fmt.Println(seq)
-		}
-		byteSeq := []byte(seq)
-		fmt.Println(string(readingBuffer[0:n]))
-		msg := append(byteSeq, readingBuffer...)
+		go sendPacket(n, seqNum, connected, dataConn, dataAddr, windowSize)
 
-		_, err = dataConn.WriteTo(msg, dataAddr)
-		if err != nil {
-			fmt.Printf("Error sending packet %v\n", err)
-			return err
-		}
 		acknowledged := false
+		start := time.Now()
 		for !acknowledged {
 			_, err := dataConn.Read(transmitionBuffer)
 			if err != nil {
 				fmt.Printf("Error reading packets %v\n", err)
 				return err
 			}
-			//implémenter timer
-			if string(transmitionBuffer) == "ACK"+seq {
+			if string(transmitionBuffer) == "ACK"+strconv.Itoa(seqNum) {
 				acknowledged = true
 				break
+			}
+			elapsed := time.Since(start)
+			elapsed = elapsed / 1000000 //to get time in milliseconds
+			if elapsed > 500 {
+				//relancer packet
 			}
 		}
 		seqNum++
@@ -223,7 +215,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		*windowSize--
-
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
@@ -248,4 +239,25 @@ func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr,
 		}
 	}
 	return
+}
+
+func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+	readingBuffer := make([]byte, 100)
+
+	//Sending fragment
+	seq := strconv.Itoa(seqNum)
+	fmt.Printf("Sequence number: %d\n", seqNum)
+	zeros := 6 - len(seq)
+	for i := 0; i < zeros; i++ {
+		seq = "0" + seq
+	}
+	byteSeq := []byte(seq)
+	fmt.Println(string(readingBuffer[0:n]))
+	msg := append(byteSeq, readingBuffer...)
+
+	_, err = dataConn.WriteTo(msg, dataAddr)
+	if err != nil {
+		fmt.Printf("Error sending packet %v\n", err)
+		return err
+	}
 }

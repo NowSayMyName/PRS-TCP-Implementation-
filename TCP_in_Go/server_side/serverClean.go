@@ -67,7 +67,7 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, &windowSize)
-	go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
+	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
 	return
 }
@@ -137,7 +137,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// finalPath = strings.Replace(finalPath, "\n", "", -1)
 	// finalPath = strings.Replace(finalPath, "\r", "", -1)
 	// finalPath = strings.Replace(finalPath, "%", "", -1)
-	// finalPath = strings.Replace(finalPath, "\"", "", -1)
+	// finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	// fmt.Printf("%s\n", finalPath)
 
@@ -203,6 +203,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			fmt.Printf("Error sending packet %v\n", err)
 			return err
 		}
+
 		acknowledged := false
 		for !acknowledged {
 			_, err := dataConn.Read(transmitionBuffer)
@@ -211,7 +212,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 				return err
 			}
 			//implémenter timer
-			if string(transmitionBuffer) == "ACK"+seq {
+			fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
+			if string(transmitionBuffer[0:9]) == "ACK"+seq {
 				acknowledged = true
 				break
 			}
@@ -243,6 +245,7 @@ func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr,
 		}
 
 		if string(transmitionBuffer[0:3]) == "ACK" {
+			fmt.Printf("RECEIVED : " + string(transmitionBuffer))
 			*windowSize++
 		}
 	}

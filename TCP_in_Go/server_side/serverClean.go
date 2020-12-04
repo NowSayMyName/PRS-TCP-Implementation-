@@ -77,6 +77,11 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP(ipAddress),
+	}
+
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
@@ -107,11 +112,6 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 	if string(buffer[0:3]) != "ACK" {
 		return nil, errors.New("Couldn't receive ACK")
-	}
-
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP(ipAddress),
 	}
 
 	dataConn, err = net.ListenUDP("udp", &dataAddr)
@@ -189,14 +189,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		acknowledged := false
 
 		go listenACK(seqNum, dataConn, dataAddr, windowSize, &acknowledged)
-		go sendPacket(n, seqNum, dataConn, dataAddr)
+		go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
 
 		seqNum++
 		if seqNum == 1000000 {
 			seqNum = 0
 		}
-
-		*windowSize--
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
@@ -231,7 +229,7 @@ func listenACK(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize 
 	return
 }
 
-func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
+func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	readingBuffer := make([]byte, 100)
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
@@ -249,5 +247,6 @@ func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (er
 		fmt.Printf("Error sending packet %v\n", err)
 		return err
 	}
+	*windowSize--
 	return
 }

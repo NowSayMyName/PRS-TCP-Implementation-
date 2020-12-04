@@ -46,29 +46,16 @@ func main() {
 
 	for {
 		dataPort++
-		err := acceptConnection(publicConn, dataPort)
+		dataConn, err := acceptConnection(publicConn, ipAddress, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
-		go handleConnection(dataPort, ipAddress)
+		go handleConnection(dataConn)
 	}
 }
 
-func handleConnection(dataPort int, ipAddress string) (err error) {
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP(ipAddress),
-	}
-
-	dataConn, err := net.ListenUDP("udp", &dataAddr)
-	if err != nil {
-		fmt.Printf("Couldn't listen \n%v", err)
-		return err
-	}
-
-	fmt.Printf("Connection started on port %d\n", dataPort)
-
+func handleConnection(dataConn *net.UDPConn) (err error) {
 	windowSize := 1
 	transmitting := true
 	buffer := make([]byte, 100)
@@ -81,25 +68,25 @@ func handleConnection(dataPort int, ipAddress string) (err error) {
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, &windowSize)
-	go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
+	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
 	return
 }
 
 /** waits for a connection and sends the public port number*/
-func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
+func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
-		return err
+		return nil, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return errors.New("Could not receive SYN")
+		return nil, errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
@@ -108,21 +95,33 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return err
+		return nil, err
 	}
 
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return err
+		return nil, err
 	}
 	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return errors.New("Couldn't receive ACK")
+		return nil, errors.New("Couldn't receive ACK")
 	}
 
-	return nil
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP(ipAddress),
+	}
+
+	dataConn, err = net.ListenUDP("udp", &dataAddr)
+	if err != nil {
+		fmt.Printf("Couldn't listen \n%v", err)
+		return nil, err
+	}
+
+	fmt.Printf("Connection started on port %d\n", dataPort)
+	return dataConn, nil
 }
 
 /** takes a path to a file and sends it to the given address*/
@@ -139,7 +138,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// finalPath = strings.Replace(finalPath, "\n", "", -1)
 	// finalPath = strings.Replace(finalPath, "\r", "", -1)
 	// finalPath = strings.Replace(finalPath, "%", "", -1)
-	// finalPath = strings.Replace(finalPath, "\"", "", -1)
+	// finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	// fmt.Printf("%s\n", finalPath)
 
@@ -199,8 +198,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 				fmt.Printf("Error reading packets %v\n", err)
 				return err
 			}
-			if string(transmitionBuffer) == "ACK"+strconv.Itoa(seqNum) {
+			//implémenter timer
+			fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
+			if string(transmitionBuffer[0:9]) == "ACK"+strconv.Itoa(seqNum) {
 				acknowledged = true
+				*windowSize++
 				break
 			}
 			elapsed := time.Since(start)
@@ -235,6 +237,7 @@ func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr,
 		}
 
 		if string(transmitionBuffer[0:3]) == "ACK" {
+			fmt.Printf("RECEIVED : " + string(transmitionBuffer))
 			*windowSize++
 		}
 	}
@@ -243,7 +246,6 @@ func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr,
 
 func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	readingBuffer := make([]byte, 100)
-
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
 	fmt.Printf("Sequence number: %d\n", seqNum)
@@ -260,4 +262,5 @@ func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr 
 		fmt.Printf("Error sending packet %v\n", err)
 		return err
 	}
+	return
 }

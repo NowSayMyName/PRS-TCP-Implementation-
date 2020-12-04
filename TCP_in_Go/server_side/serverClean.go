@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
-	"strings"
 )
 
 func getArgs() (ipaddress string, portNumber int) {
@@ -128,34 +128,39 @@ func acceptConnection(publicConn *net.UDPConn, dataPort int) (err error) {
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	seqNum := 0
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		fmt.Printf("Error finding absolute path %v\n", err)
-		return err
-	}
+	// pwd, err := os.Getwd()
+	// if err != nil {
+	// 	fmt.Printf("Error finding absolute path %v\n", err)
+	// 	return err
+	// }
 
-	finalPath := pwd + "/" + path
-	finalPath = strings.Replace(finalPath, "\n", "", -1)
-	finalPath = strings.Replace(finalPath, "\r", "", -1)
-	finalPath = strings.Replace(finalPath, "%", "", -1)
-	fmt.Printf("%s\n", finalPath)
+	// finalPath := pwd + "/" + path
+	// finalPath = strings.Replace(finalPath, "\n", "", -1)
+	// finalPath = strings.Replace(finalPath, "\r", "", -1)
+	// finalPath = strings.Replace(finalPath, "%", "", -1)
 
-	f, err := os.Open(finalPath)
+	// fmt.Printf("%s\n", finalPath)
+
+	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
-		fmt.Printf("Error creating file %v\n", err)
+		fmt.Printf("Error opening file %v\n", err)
 		return err
 	}
 	defer f.Close()
 
 	r := bufio.NewReader(f)
+	transmitionBuffer := make([]byte, 100)
 	readingBuffer := make([]byte, 100)
-
-	for {
+	endOfFile := false
+	for endOfFile {
 		//Reading the file
 		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
+		if err == io.EOF {
+			endOfFile = true
+		}
 		if err != nil {
-			fmt.Printf("Error reading file %v\n", err)
+			fmt.Println("Error reading file:", err)
 			return err
 		}
 
@@ -164,9 +169,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//Sending fragment
 		seq := strconv.Itoa(seqNum)
-		for i := 0; i < 6-seqNum/10; i++ {
+		for i := 0; i < 6-len(seq); i++ {
 			seq = "0" + seq
-			fmt.Printf(seq)
+			fmt.Println(seq)
 		}
 		byteSeq := []byte(seq)
 		fmt.Println(string(readingBuffer[0:n]))
@@ -177,6 +182,24 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			fmt.Printf("Error sending packet %v\n", err)
 			return err
 		}
+		acknowledged := false
+		for !acknowledged {
+			_, err := dataConn.Read(transmitionBuffer)
+			if err != nil {
+				fmt.Printf("Error reading packets %v\n", err)
+				return err
+			}
+			//implémenter timer
+			if string(transmitionBuffer) == "ACK"+seq {
+				acknowledged = true
+				break
+			}
+		}
+		seqNum++
+		if seqNum == 1000000 {
+			seqNum = 0
+		}
+
 		*windowSize--
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)

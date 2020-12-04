@@ -188,7 +188,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		for *windowSize == 0 {
 		}
 
-		go sendPacket(n, seqNum, connected, dataConn, dataAddr, windowSize)
+		go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
 
 		acknowledged := false
 		start := time.Now()
@@ -215,8 +215,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		if seqNum == 1000000 {
 			seqNum = 0
 		}
-
-		*windowSize--
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
@@ -244,7 +242,7 @@ func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr,
 	return
 }
 
-func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	readingBuffer := make([]byte, 100)
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
@@ -262,5 +260,6 @@ func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr 
 		fmt.Printf("Error sending packet %v\n", err)
 		return err
 	}
+	*windowSize--
 	return
 }

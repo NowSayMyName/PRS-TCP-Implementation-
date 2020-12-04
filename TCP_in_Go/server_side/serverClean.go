@@ -137,8 +137,29 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// finalPath = strings.Replace(finalPath, "\n", "", -1)
 	// finalPath = strings.Replace(finalPath, "\r", "", -1)
 	// finalPath = strings.Replace(finalPath, "%", "", -1)
+	// finalPath = strings.Replace(finalPath, "\"", "", -1)
 
 	// fmt.Printf("%s\n", finalPath)
+
+	// clean := strings.Map(func(r rune) rune {
+	// 	if unicode.IsGraphic(r) {
+	// 		return r
+	// 	}
+	// 	return -1
+	// }, finalPath)
+
+	// fmt.Printf("%q\n", clean)
+	// fmt.Println(len(clean))
+
+	// clean = strings.Map(func(r rune) rune {
+	// 	if unicode.IsPrint(r) {
+	// 		return r
+	// 	}
+	// 	return -1
+	// }, finalPath)
+
+	// fmt.Printf("%q\n", clean)
+	// fmt.Println(len(clean))
 
 	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
@@ -178,6 +199,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 		*windowSize--
+
 	}
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {

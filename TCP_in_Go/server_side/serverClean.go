@@ -215,6 +215,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
 			if string(transmitionBuffer[0:9]) == "ACK"+seq {
 				acknowledged = true
+				*windowSize++
 				break
 			}
 		}

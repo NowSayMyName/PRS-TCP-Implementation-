@@ -76,6 +76,11 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (dataConn *net.UDPConn, err error) {
 	buffer := make([]byte, 100)
 
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP(ipAddress),
+	}
+
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
@@ -106,11 +111,6 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 	if string(buffer[0:3]) != "ACK" {
 		return nil, errors.New("Couldn't receive ACK")
-	}
-
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP(ipAddress),
 	}
 
 	dataConn, err = net.ListenUDP("udp", &dataAddr)

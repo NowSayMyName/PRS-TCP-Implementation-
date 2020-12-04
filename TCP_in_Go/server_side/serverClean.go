@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -169,14 +170,18 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	defer f.Close()
 
 	r := bufio.NewReader(f)
+	transmitionBuffer := make([]byte, 100)
 	readingBuffer := make([]byte, 100)
-
-	for {
+	endOfFile := false
+	for endOfFile {
 		//Reading the file
 		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
+		if err == io.EOF {
+			endOfFile = true
+		}
 		if err != nil {
-			fmt.Printf("Error reading file %v\n", err)
+			fmt.Println("Error reading file:", err)
 			return err
 		}
 
@@ -185,9 +190,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//Sending fragment
 		seq := strconv.Itoa(seqNum)
-		for i := 0; i < 6-seqNum/10; i++ {
+		for i := 0; i < 6-len(seq); i++ {
 			seq = "0" + seq
-			fmt.Printf(seq)
+			fmt.Println(seq)
 		}
 		byteSeq := []byte(seq)
 		fmt.Println(string(readingBuffer[0:n]))
@@ -198,6 +203,24 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			fmt.Printf("Error sending packet %v\n", err)
 			return err
 		}
+		acknowledged := false
+		for !acknowledged {
+			_, err := dataConn.Read(transmitionBuffer)
+			if err != nil {
+				fmt.Printf("Error reading packets %v\n", err)
+				return err
+			}
+			//implémenter timer
+			if string(transmitionBuffer) == "ACK"+seq {
+				acknowledged = true
+				break
+			}
+		}
+		seqNum++
+		if seqNum == 1000000 {
+			seqNum = 0
+		}
+
 		*windowSize--
 
 	}

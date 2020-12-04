@@ -30,6 +30,7 @@ func getArgs() (ipaddress string, portNumber int) {
 
 func main() {
 	ipAddress, portNumber := getArgs()
+	stopCh := make(chan struct{})
 
 	publicAddr := net.UDPAddr{
 		Port: portNumber,
@@ -188,7 +189,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 		acknowledged := false
 
-		go listenACK(seqNum, dataConn, dataAddr, windowSize, &acknowledged)
+		go listenACK(n, seqNum, dataConn, dataAddr, windowSize, &acknowledged)
 		go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
 
 		seqNum++
@@ -204,7 +205,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }
 
-func listenACK(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) (err error) {
+func listenACK(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) (err error) {
 	transmitionBuffer := make([]byte, 100)
 	start := time.Now()
 	for !*acknowledged {
@@ -213,18 +214,13 @@ func listenACK(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize 
 			fmt.Printf("Error reading packets %v\n", err)
 			return err
 		}
-		//implémenter timer
 		fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
 		if string(transmitionBuffer[0:9]) == "ACK"+strconv.Itoa(seqNum) {
 			*acknowledged = true
 			*windowSize++
 			break
 		}
-		elapsed := time.Since(start)
-		elapsed = elapsed / 1000000 //to get time in milliseconds
-		if elapsed > 500 {
-			//relancer packet
-		}
+
 	}
 	return
 }
@@ -249,4 +245,21 @@ func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, win
 	}
 	*windowSize--
 	return
+}
+
+func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
+	start := time.Now()
+	for {
+		select {
+		case <-stopCh:
+			return
+		default:
+			elapsed := time.Since(start)
+			elapsed = elapsed / 1000000 //to get time in milliseconds
+			if elapsed > 500 {
+				go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+				return
+			}
+		}
+	}
 }

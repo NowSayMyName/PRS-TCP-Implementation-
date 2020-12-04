@@ -97,19 +97,6 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 		return nil, err
 	}
 
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP(ipAddress),
-	}
-
-	dataConn, err = net.ListenUDP("udp", &dataAddr)
-	if err != nil {
-		fmt.Printf("Couldn't listen \n%v", err)
-		return nil, err
-	}
-
-	defer dataConn.Close()
-
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
@@ -119,6 +106,17 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 	if string(buffer[0:3]) != "ACK" {
 		return nil, errors.New("Couldn't receive ACK")
+	}
+
+	dataAddr := net.UDPAddr{
+		Port: dataPort,
+		IP:   net.ParseIP(ipAddress),
+	}
+
+	dataConn, err = net.ListenUDP("udp", &dataAddr)
+	if err != nil {
+		fmt.Printf("Couldn't listen \n%v", err)
+		return nil, err
 	}
 
 	fmt.Printf("Connection started on port %d\n", dataPort)

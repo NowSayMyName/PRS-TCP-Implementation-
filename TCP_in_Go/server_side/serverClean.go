@@ -170,7 +170,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	defer f.Close()
 
 	r := bufio.NewReader(f)
-	transmitionBuffer := make([]byte, 100)
 	readingBuffer := make([]byte, 100)
 	endOfFile := false
 	for !endOfFile {
@@ -187,30 +186,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		for *windowSize == 0 {
 		}
-
-		go sendPacket(n, seqNum, connected, dataConn, dataAddr, windowSize)
-
 		acknowledged := false
-		start := time.Now()
-		for !acknowledged {
-			_, err := dataConn.Read(transmitionBuffer)
-			if err != nil {
-				fmt.Printf("Error reading packets %v\n", err)
-				return err
-			}
-			//implémenter timer
-			fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
-			if string(transmitionBuffer[0:9]) == "ACK"+strconv.Itoa(seqNum) {
-				acknowledged = true
-				*windowSize++
-				break
-			}
-			elapsed := time.Since(start)
-			elapsed = elapsed / 1000000 //to get time in milliseconds
-			if elapsed > 500 {
-				//relancer packet
-			}
-		}
+
+		go listenACK(seqNum, dataConn, dataAddr, windowSize, &acknowledged)
+		go sendPacket(n, seqNum, dataConn, dataAddr)
+
 		seqNum++
 		if seqNum == 1000000 {
 			seqNum = 0
@@ -226,25 +206,32 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }
 
-func listenOnDataPort(connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+func listenACK(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) (err error) {
 	transmitionBuffer := make([]byte, 100)
-
-	for *connected {
+	start := time.Now()
+	for !*acknowledged {
 		_, err := dataConn.Read(transmitionBuffer)
 		if err != nil {
 			fmt.Printf("Error reading packets %v\n", err)
 			return err
 		}
-
-		if string(transmitionBuffer[0:3]) == "ACK" {
-			fmt.Printf("RECEIVED : " + string(transmitionBuffer))
+		//implémenter timer
+		fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
+		if string(transmitionBuffer[0:9]) == "ACK"+strconv.Itoa(seqNum) {
+			*acknowledged = true
 			*windowSize++
+			break
+		}
+		elapsed := time.Since(start)
+		elapsed = elapsed / 1000000 //to get time in milliseconds
+		if elapsed > 500 {
+			//relancer packet
 		}
 	}
 	return
 }
 
-func sendPacket(n, seqNum int, connected *bool, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	readingBuffer := make([]byte, 100)
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)

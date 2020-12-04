@@ -78,11 +78,6 @@ func acceptConnection(controlConn *net.UDPConn, dataPort int) (controlAddr net.A
 		return nil, nil, errors.New("Couldn't receive ACK")
 	}
 
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP("127.0.0.1"),
-	}
-
 	dataConn, err = net.ListenUDP("udp", &dataAddr)
 	if err != nil {
 		fmt.Printf("Couldn't listen \n%v", err)

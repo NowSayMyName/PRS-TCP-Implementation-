@@ -191,7 +191,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//Sending fragment
 		seq := strconv.Itoa(seqNum)
-		for i := 0; i < 6-len(seq); i++ {
+		zeros := 6 - len(seq)
+		for i := 0; i < zeros; i++ {
 			seq = "0" + seq
 			fmt.Println(seq)
 		}

@@ -152,7 +152,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	transmitionBuffer := make([]byte, 100)
 	readingBuffer := make([]byte, 100)
 	endOfFile := false
-	for endOfFile {
+	for !endOfFile {
 		//Reading the file
 		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
@@ -169,7 +169,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//Sending fragment
 		seq := strconv.Itoa(seqNum)
-		for i := 0; i < 6-len(seq); i++ {
+		zeros := 6 - len(seq)
+		for i := 0; i < zeros; i++ {
 			seq = "0" + seq
 			fmt.Println(seq)
 		}

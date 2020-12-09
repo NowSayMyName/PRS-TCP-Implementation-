@@ -224,14 +224,14 @@ func listenACK(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 		}
 		elapsed := start.Sub(time.Now())
 		if elapsed > 1 {
-			go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+			go sendPacket(n, seqNum, dataConn, dataAddr, windowSize, true)
 			start := time.Now()
 		}
 	}
 	return
 }
 
-func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, consumeWindow bool) (err error) {
 	readingBuffer := make([]byte, 100)
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
@@ -249,7 +249,9 @@ func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, win
 		fmt.Printf("Error sending packet %v\n", err)
 		return err
 	}
-	*windowSize--
+	if !consumeWindow {
+		*windowSize--
+	}
 	return
 }
 
@@ -295,10 +297,10 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 }
 
 func timeCheck2(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) {
-	sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+	sendPacket(n, seqNum, dataConn, dataAddr, windowSize, true)
 	for !*acknowledged {
 		// time.Sleep(RTT)
 		time.Sleep(1000)
-		sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+		sendPacket(n, seqNum, dataConn, dataAddr, windowSize, false)
 	}
 }

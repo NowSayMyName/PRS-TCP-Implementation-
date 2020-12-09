@@ -173,13 +173,14 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	transmitting := true
 	packets := []int{}
-	listenACKGlobal(packets, dataConn, dataAddr, windowSize, &transmitting)
+	go listenACKGlobal(packets, dataConn, dataAddr, windowSize, &transmitting)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 1000)
+
 	endOfFile := false
 	for !endOfFile {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		//Reading the file
 		n, err := r.Read(readingBuffer)
 		if err == io.EOF {
@@ -192,9 +193,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		for *windowSize == 0 {
 		}
-
-		acknowledged := new(bool)
-		*acknowledged = false
 
 		packets = append(packets, seqNum)
 
@@ -310,6 +308,8 @@ func remove(packets []int, value int) []int {
 	i := 0
 	for i < len(packets) {
 		if packets[i] == value {
+			fmt.Printf("YES REMOVED " + strconv.Itoa(value) + "\n")
+
 			return append(packets[:i], packets[i+1:]...)
 		}
 		i++
@@ -320,6 +320,7 @@ func remove(packets []int, value int) []int {
 func contains(packets []int, value int) bool {
 	for _, v := range packets {
 		if v == value {
+			fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
 			return true
 		}
 	}
@@ -337,7 +338,7 @@ func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, wi
 		}
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
 		if string(transmissionBuffer[0:3]) == "ACK" {
-			packetNum, _ := strconv.Atoi(string(transmissionBuffer[4:9]))
+			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 			packets = remove(packets, packetNum)
 			*windowSize++
 		}
@@ -346,13 +347,14 @@ func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, wi
 }
 
 func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
+	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
-		fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 		go sendPacket(n, buffer, seqNum, dataConn, dataAddr, windowSize, true)
 		// time.Sleep(RTT)
 		time.Sleep(1 * time.Second)
 		if !contains(packets, seqNum) {
 			break
 		}
+		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 	}
 }

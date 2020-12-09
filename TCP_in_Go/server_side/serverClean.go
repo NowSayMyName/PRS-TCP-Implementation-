@@ -346,7 +346,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 
 			// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
 
-			*srtt = getRTT(*srtt, timeDiff, 0.5, 0.5)
+			*srtt = getRTT(*srtt, timeDiff, 0.9, 0.1)
 			fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
 			delete(*packets, packetNum)

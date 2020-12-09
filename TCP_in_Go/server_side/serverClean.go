@@ -30,7 +30,8 @@ func getArgs() (ipaddress string, portNumber int) {
 
 func main() {
 	ipAddress, portNumber := getArgs()
-	stopCh := make(chan struct{})
+
+	//stopCh := make(chan struct{})
 
 	publicAddr := net.UDPAddr{
 		Port: portNumber,
@@ -220,7 +221,11 @@ func listenACK(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 			*windowSize++
 			break
 		}
-
+		elapsed := start.Sub(time.Now())
+		if elapsed > 1 {
+			go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+			start := time.Now()
+		}
 	}
 	return
 }
@@ -247,6 +252,7 @@ func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, win
 	return
 }
 
+/*
 func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
 	start := time.Now()
 	for {
@@ -263,3 +269,4 @@ func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 		}
 	}
 }
+*/

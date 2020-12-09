@@ -187,10 +187,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		for *windowSize == 0 {
 		}
-		acknowledged := false
 
-		go listenACK(n, seqNum, dataConn, dataAddr, windowSize, &acknowledged)
-		go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+		acknowledged := new(bool)
+		*acknowledged = false
+
+		go listenACK2(seqNum, dataConn, dataAddr, windowSize, acknowledged)
+		go timeCheck2(n, seqNum, dataConn, dataAddr, windowSize, acknowledged)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -293,6 +295,7 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 }
 
 func timeCheck2(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) {
+	sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
 	for !*acknowledged {
 		// time.Sleep(RTT)
 		time.Sleep(1000)

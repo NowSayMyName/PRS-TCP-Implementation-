@@ -225,7 +225,7 @@ func listenACK(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 		elapsed := start.Sub(time.Now())
 		if elapsed > 1 {
 			go sendPacket(n, seqNum, dataConn, dataAddr, windowSize, true)
-			start := time.Now()
+			// start := time.Now()
 		}
 	}
 	return
@@ -297,10 +297,9 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 }
 
 func timeCheck2(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) {
-	sendPacket(n, seqNum, dataConn, dataAddr, windowSize, true)
 	for !*acknowledged {
+		sendPacket(n, seqNum, dataConn, dataAddr, windowSize, true)
 		// time.Sleep(RTT)
 		time.Sleep(1000)
-		sendPacket(n, seqNum, dataConn, dataAddr, windowSize, false)
 	}
 }

@@ -173,17 +173,18 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	transmitting := true
 	packets := []int{}
-	go listenACKGlobal(packets, dataConn, dataAddr, windowSize, &transmitting)
+	go listenACKGlobal(&packets, dataConn, dataAddr, windowSize, &transmitting)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 1000)
 
 	endOfFile := false
 	for !endOfFile {
-		time.Sleep(1 * time.Second)
+		// time.Sleep(10 * time.Millisecond)
 		//Reading the file
 		n, err := r.Read(readingBuffer)
 		if err == io.EOF {
+			fmt.Printf("REACHED EOF\n")
 			endOfFile = true
 		}
 		if err != nil {
@@ -195,9 +196,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		packets = append(packets, seqNum)
+		*windowSize--
 
 		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		go timeCheck2(packets, n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
+		go timeCheck2(packets, n, readingBuffer, seqNum, dataConn, dataAddr)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -212,7 +214,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }
 
-func listenACK(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+/*func listenACK(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	go sendPacket(n, buffer, seqNum, dataConn, dataAddr, windowSize, true)
 	transmitionBuffer := make([]byte, 9)
@@ -239,9 +241,9 @@ func listenACK(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr
 		}
 	}
 	return
-}
+}*/
 
-func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, consumeWindow bool) (err error) {
+func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
 	// fmt.Printf("Sequence number: %d\n", seqNum)
@@ -256,9 +258,6 @@ func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAdd
 	if err != nil {
 		fmt.Printf("Error sending packet %v\n", err)
 		return err
-	}
-	if !consumeWindow {
-		*windowSize--
 	}
 	return
 }
@@ -308,8 +307,7 @@ func remove(packets []int, value int) []int {
 	i := 0
 	for i < len(packets) {
 		if packets[i] == value {
-			fmt.Printf("YES REMOVED " + strconv.Itoa(value) + "\n")
-
+			// fmt.Printf("YES REMOVED " + strconv.Itoa(value) + "\n")
 			return append(packets[:i], packets[i+1:]...)
 		}
 		i++
@@ -320,14 +318,14 @@ func remove(packets []int, value int) []int {
 func contains(packets []int, value int) bool {
 	for _, v := range packets {
 		if v == value {
-			fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
+			// fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
 			return true
 		}
 	}
 	return false
 }
 
-func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool) (err error) {
+func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
 	for *transmitting {
@@ -339,17 +337,17 @@ func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, wi
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
-			packets = remove(packets, packetNum)
+			*packets = remove(*packets, packetNum)
 			*windowSize++
 		}
 	}
 	return
 }
 
-func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
+func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
-		go sendPacket(n, buffer, seqNum, dataConn, dataAddr, windowSize, true)
+		go sendPacket(n, buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(RTT)
 		time.Sleep(1 * time.Second)
 		if !contains(packets, seqNum) {

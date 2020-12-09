@@ -70,7 +70,6 @@ func main() {
 }
 
 func handleConnection(dataConn *net.UDPConn) (err error) {
-	windowSize := 1
 	transmitting := true
 	buffer := make([]byte, 100)
 
@@ -81,7 +80,7 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 	}
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
-	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, &windowSize)
+	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr)
 	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
 	return
@@ -128,7 +127,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 }
 
 /** takes a path to a file and sends it to the given address*/
-func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) (err error) {
+func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	seqNum := 0
 
 	// pwd, err := os.Getwd()
@@ -176,16 +175,14 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	transmitting := true
 	packets := []int{}
-	go listenACKGlobal(&packets, dataConn, dataAddr, windowSize, &transmitting, channelWindow)
+	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 1494)
 
 	endOfFile := false
 	for !endOfFile {
-		_ = <-channelWindow
-
-		// time.Sleep(10 * time.Millisecond)
+		// time.Sleep(1000 * time.Millisecond)
 		//Reading the file
 		n, err := r.Read(readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
@@ -198,10 +195,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		packets = append(packets, seqNum)
-		*windowSize--
+		_ = <-channelWindow
 
 		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		go timeCheck2(packets, n, readingBuffer, seqNum, dataConn, dataAddr)
+		go timeCheck2(&packets, n, readingBuffer, seqNum, dataConn, dataAddr)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -307,13 +304,11 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 }*/
 
 func remove(packets []int, value int) []int {
-	i := 0
-	for i < len(packets) {
+	for i := 0; i < len(packets); i++ {
 		if packets[i] == value {
 			// fmt.Printf("YES REMOVED " + strconv.Itoa(value) + "\n")
 			return append(packets[:i], packets[i+1:]...)
 		}
-		i++
 	}
 	return packets
 }
@@ -321,14 +316,14 @@ func remove(packets []int, value int) []int {
 func contains(packets []int, value int) bool {
 	for _, v := range packets {
 		if v == value {
-			// fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
+			fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
 			return true
 		}
 	}
 	return false
 }
 
-func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool, channelWindow chan bool) (err error) {
+func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
 	channelWindow <- true
@@ -342,20 +337,21 @@ func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, w
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 			*packets = remove(*packets, packetNum)
-			*windowSize++
-			channelWindow <- true
+			for i := 0; i < 1; i++ {
+				channelWindow <- true
+			}
 		}
 	}
 	return
 }
 
-func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) {
+func timeCheck2(packets *[]int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
 		go sendPacket(n, buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(RTT)
 		time.Sleep(1000 * time.Millisecond)
-		if !contains(packets, seqNum) {
+		if !contains(*packets, seqNum) {
 			break
 		}
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")

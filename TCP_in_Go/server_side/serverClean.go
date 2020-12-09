@@ -174,8 +174,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelWindow := make(chan bool)
 
 	transmitting := true
-	packets := []int{}
-	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow)
+	packets := map[int]time.Time{}
+
+	firstRTT := 1000000
+	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow, &firstRTT)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 1494)
@@ -194,11 +196,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		packets = append(packets, seqNum)
+		packets[seqNum] = time.Now()
 		_ = <-channelWindow
 
 		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		go timeCheck2(&packets, n, readingBuffer, seqNum, dataConn, dataAddr)
+		go timeCheck2(&packets, n, readingBuffer, seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -262,8 +264,8 @@ func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAdd
 }
 
 /** retourne le nouveau RTT, avec beta = 1 - alpha (mais évite de répéter ce calcul) */
-func getRTT(lastRTT int32, measuredRTT int32, alpha int32, beta int32) int32 {
-	return alpha*lastRTT + beta*measuredRTT
+func getRTT(lastRTT int, measuredRTT int, alpha float32, beta float32) int {
+	return int(alpha*float32(lastRTT) + beta*float32(measuredRTT))
 }
 
 /*
@@ -303,6 +305,7 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 	return
 }*/
 
+/*
 func remove(packets []int, value int) []int {
 	for i := 0; i < len(packets); i++ {
 		if packets[i] == value {
@@ -316,14 +319,14 @@ func remove(packets []int, value int) []int {
 func contains(packets []int, value int) bool {
 	for _, v := range packets {
 		if v == value {
-			fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
+			// fmt.Printf("YES CONTAINS " + strconv.Itoa(value) + "\n")
 			return true
 		}
 	}
 	return false
-}
+}*/
 
-func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
+func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
 	channelWindow <- true
@@ -336,7 +339,17 @@ func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, t
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
-			*packets = remove(*packets, packetNum)
+			timeDiff := int(time.Now().Sub((*packets)[packetNum]) / time.Microsecond)
+			if timeDiff > 10000000 {
+				timeDiff = 10000000
+			}
+
+			// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
+
+			*srtt = getRTT(*srtt, timeDiff, 0.5, 0.5)
+			fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+
+			delete(*packets, packetNum)
 			for i := 0; i < 1; i++ {
 				channelWindow <- true
 			}
@@ -345,13 +358,13 @@ func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, t
 	return
 }
 
-func timeCheck2(packets *[]int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) {
+func timeCheck2(packets *map[int]time.Time, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
 		go sendPacket(n, buffer, seqNum, dataConn, dataAddr)
-		// time.Sleep(RTT)
-		time.Sleep(1000 * time.Millisecond)
-		if !contains(*packets, seqNum) {
+		// time.Sleep(time.Duration(*srtt))
+		time.Sleep(time.Duration(*srtt) * time.Microsecond)
+		if _, ok := (*packets)[seqNum]; !ok {
 			break
 		}
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")

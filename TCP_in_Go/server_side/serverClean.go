@@ -315,6 +315,15 @@ func remove(packets []int, value int) []int {
 	return packets
 }
 
+func contains(packets []int, value int) bool {
+	for _, v := range packets {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
 func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
@@ -334,11 +343,14 @@ func listenACKGlobal(packets []int, dataConn *net.UDPConn, dataAddr net.Addr, wi
 	return
 }
 
-func timeCheck2(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
+func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
 	for {
 		fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 		go sendPacket(n, buffer, seqNum, dataConn, dataAddr, windowSize, true)
 		// time.Sleep(RTT)
 		time.Sleep(1 * time.Second)
+		if !contains(packets, seqNum) {
+			break
+		}
 	}
 }

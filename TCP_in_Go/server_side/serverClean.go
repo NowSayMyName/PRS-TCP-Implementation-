@@ -171,7 +171,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 	defer f.Close()
 
+	transmitting := true
 	packets := []int{}
+	listenACKGlobal(packets, dataConn, dataAddr, windowSize, &transmitting)
 
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, 1000)
@@ -196,8 +198,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		packets = append(packets, seqNum)
 
-		go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		// go timeCheck2(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize, acknowledged)
+		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
+		go timeCheck2(packets, n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
 
 		seqNum++
 		if seqNum == 1000000 {

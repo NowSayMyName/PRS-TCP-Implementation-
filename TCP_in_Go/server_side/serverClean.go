@@ -48,7 +48,19 @@ func main() {
 
 	for {
 		dataPort++
-		dataConn, err := acceptConnection(publicConn, ipAddress, dataPort)
+
+		dataAddr := net.UDPAddr{
+			Port: dataPort,
+			IP:   net.ParseIP(ipAddress),
+		}
+
+		dataConn, err := net.ListenUDP("udp", &dataAddr)
+		if err != nil {
+			fmt.Printf("Couldn't listen \n%v", err)
+			return
+		}
+
+		err = acceptConnection(publicConn, ipAddress, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
@@ -76,24 +88,19 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 }
 
 /** waits for a connection and sends the public port number*/
-func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (dataConn *net.UDPConn, err error) {
+func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (err error) {
 	buffer := make([]byte, 100)
-
-	dataAddr := net.UDPAddr{
-		Port: dataPort,
-		IP:   net.ParseIP(ipAddress),
-	}
 
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
-		return nil, err
+		return err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return nil, errors.New("Could not receive SYN")
+		return errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
@@ -102,28 +109,22 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return nil, err
+		return err
 	}
 
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return nil, err
+		return err
 	}
 	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return nil, errors.New("Couldn't receive ACK")
-	}
-
-	dataConn, err = net.ListenUDP("udp", &dataAddr)
-	if err != nil {
-		fmt.Printf("Couldn't listen \n%v", err)
-		return nil, err
+		return errors.New("Couldn't receive ACK")
 	}
 
 	fmt.Printf("Connection started on port %d\n", dataPort)
-	return dataConn, nil
+	return nil
 }
 
 /** takes a path to a file and sends it to the given address*/
@@ -171,28 +172,29 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 	defer f.Close()
 
+	channelWindow := make(chan bool)
+
 	transmitting := true
 	packets := []int{}
-	go listenACKGlobal(&packets, dataConn, dataAddr, windowSize, &transmitting)
+	go listenACKGlobal(&packets, dataConn, dataAddr, windowSize, &transmitting, channelWindow)
 
 	r := bufio.NewReader(f)
-	readingBuffer := make([]byte, 1000)
+	readingBuffer := make([]byte, 1494)
 
 	endOfFile := false
 	for !endOfFile {
+		_ = <-channelWindow
+
 		// time.Sleep(10 * time.Millisecond)
 		//Reading the file
 		n, err := r.Read(readingBuffer)
-		if err == io.EOF {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			fmt.Printf("REACHED EOF\n")
 			endOfFile = true
 		}
 		if err != nil {
 			fmt.Println("Error reading file:", err)
 			return err
-		}
-
-		for *windowSize == 0 {
 		}
 
 		packets = append(packets, seqNum)
@@ -286,6 +288,7 @@ func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 }
 */
 
+/*
 func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) (err error) {
 	transmitionBuffer := make([]byte, 9)
 	for !*acknowledged {
@@ -301,7 +304,7 @@ func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize
 		}
 	}
 	return
-}
+}*/
 
 func remove(packets []int, value int) []int {
 	i := 0
@@ -325,9 +328,10 @@ func contains(packets []int, value int) bool {
 	return false
 }
 
-func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool) (err error) {
+func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, transmitting *bool, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
+	channelWindow <- true
 	for *transmitting {
 		_, err = dataConn.Read(transmissionBuffer)
 		if err != nil {
@@ -339,6 +343,7 @@ func listenACKGlobal(packets *[]int, dataConn *net.UDPConn, dataAddr net.Addr, w
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 			*packets = remove(*packets, packetNum)
 			*windowSize++
+			channelWindow <- true
 		}
 	}
 	return
@@ -349,7 +354,7 @@ func timeCheck2(packets []int, n int, buffer []byte, seqNum int, dataConn *net.U
 	for {
 		go sendPacket(n, buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(RTT)
-		time.Sleep(1 * time.Second)
+		time.Sleep(1000 * time.Millisecond)
 		if !contains(packets, seqNum) {
 			break
 		}

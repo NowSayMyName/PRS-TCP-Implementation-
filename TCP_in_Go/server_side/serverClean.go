@@ -223,7 +223,7 @@ func listenACK(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 		elapsed := start.Sub(time.Now())
 		if elapsed > 1 {
 			go sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
-			// start := time.Now()
+			start := time.Now()
 		}
 	}
 	return
@@ -274,3 +274,28 @@ func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, wind
 	}
 }
 */
+
+func listenACK2(seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) (err error) {
+	transmitionBuffer := make([]byte, 100)
+	for !*acknowledged {
+		_, err := dataConn.Read(transmitionBuffer)
+		if err != nil {
+			fmt.Printf("Error reading packets %v\n", err)
+			return err
+		}
+		fmt.Printf("RECEIVED : " + string(transmitionBuffer) + "\n")
+		if string(transmitionBuffer[0:9]) == "ACK"+strconv.Itoa(seqNum) {
+			*acknowledged = true
+			*windowSize++
+		}
+	}
+	return
+}
+
+func timeCheck2(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int, acknowledged *bool) {
+	for !*acknowledged {
+		// time.Sleep(RTT)
+		time.Sleep(1000)
+		sendPacket(n, seqNum, dataConn, dataAddr, windowSize)
+	}
+}

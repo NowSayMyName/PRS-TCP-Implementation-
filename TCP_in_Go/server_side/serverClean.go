@@ -174,7 +174,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	endOfFile := false
 	for !endOfFile {
 		//Reading the file
-		fmt.Println("[   NEW PACKET   ]")
 		n, err := r.Read(readingBuffer)
 		if err == io.EOF {
 			endOfFile = true
@@ -249,4 +248,9 @@ func sendPacket(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, win
 	}
 	*windowSize--
 	return
+}
+
+/** retourne le nouveau RTT, avec beta = 1 - alpha (mais évite de répéter ce calcul) */
+func getRTT(lastRTT int32, measuredRTT int32, alpha int32, beta int32) int32 {
+	return alpha*lastRTT + beta*measuredRTT
 }

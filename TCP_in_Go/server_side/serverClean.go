@@ -179,14 +179,23 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	firstRTT := 1000000
 	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow, &firstRTT)
 
+	bufferSize := 1400
 	r := bufio.NewReader(f)
-	readingBuffer := make([]byte, 1494)
+
+	readingBuffer := make([]byte, bufferSize)
+	// var currentByte int64 = 0
 
 	endOfFile := false
 	for !endOfFile {
 		// time.Sleep(1000 * time.Millisecond)
 		//Reading the file
-		n, err := r.Read(readingBuffer)
+		// n, err := f.ReadAt(readingBuffer, currentByte)
+		// currentByte += int64(n)
+		// fmt.Printf("READ %d BYTES\n", currentByte)
+
+		// n, err := io.ReadAtLeast(f, readingBuffer, bufferSize)
+
+		n, err := io.ReadFull(r, readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			fmt.Printf("REACHED EOF\n")
 			endOfFile = true
@@ -200,7 +209,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindow
 
 		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		go timeCheck2(&packets, n, readingBuffer, seqNum, dataConn, dataAddr, &firstRTT)
+		if !endOfFile {
+			go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
+		}
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -244,7 +255,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }*/
 
-func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
+func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
 	// fmt.Printf("Sequence number: %d\n", seqNum)
@@ -253,7 +264,7 @@ func sendPacket(n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAdd
 		seq = "0" + seq
 	}
 	// fmt.Println(string(buffer[0:n]))
-	msg := append([]byte(seq), buffer[0:n]...)
+	msg := append([]byte(seq), buffer...)
 
 	_, err = dataConn.WriteTo(msg, dataAddr)
 	if err != nil {
@@ -358,10 +369,10 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 	return
 }
 
-func timeCheck2(packets *map[int]time.Time, n int, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func timeCheck2(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
-		go sendPacket(n, buffer, seqNum, dataConn, dataAddr)
+		go sendPacket(buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(time.Duration(*srtt))
 		time.Sleep(time.Duration(*srtt) * time.Microsecond)
 		if _, ok := (*packets)[seqNum]; !ok {

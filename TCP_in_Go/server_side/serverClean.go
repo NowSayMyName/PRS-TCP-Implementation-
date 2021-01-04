@@ -143,28 +143,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	finalPath = strings.Replace(finalPath, "%", "", -1)
 	finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
-	// fmt.Printf("%s\n", finalPath)
-
-	// clean := strings.Map(func(r rune) rune {
-	// 	if unicode.IsGraphic(r) {
-	// 		return r
-	// 	}
-	// 	return -1
-	// }, finalPath)
-
-	// fmt.Printf("%q\n", clean)
-	// fmt.Println(len(clean))
-
-	// clean = strings.Map(func(r rune) rune {
-	// 	if unicode.IsPrint(r) {
-	// 		return r
-	// 	}
-	// 	return -1
-	// }, finalPath)
-
-	// fmt.Printf("%q\n", clean)
-	// fmt.Println(len(clean))
-
 	f, err := os.Open(finalPath)
 	// f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
@@ -211,20 +189,14 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindow
 
 		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
-		if !endOfFile {
-			go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
-		}
+		go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
 			seqNum = 0
 		}
 	}
-	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
-	if err != nil {
-		fmt.Printf("Error sending FIN")
-	}
-
+	go timeCheck2(&packets, []byte("FIN"), seqNum, dataConn, dataAddr, &firstRTT)
 	return
 }
 

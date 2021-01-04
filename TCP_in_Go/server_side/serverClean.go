@@ -202,8 +202,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
 		fmt.Printf("Error sending FIN")
+		return
 	}
 
+	fmt.Printf("%s file sent\n", path)
 	return
 }
 

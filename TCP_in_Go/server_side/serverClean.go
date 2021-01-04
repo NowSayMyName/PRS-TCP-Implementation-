@@ -167,13 +167,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	endOfFile := false
 	for !endOfFile {
-		// time.Sleep(1000 * time.Millisecond)
 		//Reading the file
 		// n, err := f.ReadAt(readingBuffer, currentByte)
 		// currentByte += int64(n)
 		// fmt.Printf("READ %d BYTES\n", currentByte)
-
-		// n, err := io.ReadAtLeast(f, readingBuffer, bufferSize)
 
 		n, err := io.ReadFull(r, readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
@@ -187,7 +184,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		packets[seqNum] = time.Now()
 		_ = <-channelWindow
 
-		// go listenACK(n, readingBuffer, seqNum, dataConn, dataAddr, windowSize)
 		go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
@@ -197,15 +193,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 
 	_ = <-channelWindow
-	// go timeCheck2(&packets, []byte("FIN"), seqNum, dataConn, dataAddr, &firstRTT)
-
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
 		fmt.Printf("Error sending FIN")
 		return
 	}
 
-	fmt.Printf("%s file sent\n", path)
+	fmt.Printf("SENT %s\n", path)
 	return
 }
 

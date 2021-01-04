@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -130,17 +131,17 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	seqNum := 0
 
-	// pwd, err := os.Getwd()
-	// if err != nil {
-	// 	fmt.Printf("Error finding absolute path %v\n", err)
-	// 	return err
-	// }
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error finding absolute path %v\n", err)
+		return err
+	}
 
-	// finalPath := pwd + "/" + path
-	// finalPath = strings.Replace(finalPath, "\n", "", -1)
-	// finalPath = strings.Replace(finalPath, "\r", "", -1)
-	// finalPath = strings.Replace(finalPath, "%", "", -1)
-	// finalPath = strings.Replace(finalPath, "\x00", "", -1)
+	finalPath := pwd + "/" + path
+	finalPath = strings.Replace(finalPath, "\n", "", -1)
+	finalPath = strings.Replace(finalPath, "\r", "", -1)
+	finalPath = strings.Replace(finalPath, "%", "", -1)
+	finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	// fmt.Printf("%s\n", finalPath)
 
@@ -164,7 +165,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// fmt.Printf("%q\n", clean)
 	// fmt.Println(len(clean))
 
-	f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
+	f, err := os.Open(finalPath)
+	// f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
 		fmt.Printf("Error opening file %v\n", err)
 		return err

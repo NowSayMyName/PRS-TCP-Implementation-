@@ -196,7 +196,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			seqNum = 0
 		}
 	}
-	go timeCheck2(&packets, []byte("FIN"), seqNum, dataConn, dataAddr, &firstRTT)
+	go timeCheck2(&packets, []byte("FIN\n"), seqNum, dataConn, dataAddr, &firstRTT)
 	return
 }
 

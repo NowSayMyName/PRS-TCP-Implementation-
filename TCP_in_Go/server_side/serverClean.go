@@ -195,12 +195,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			seqNum = 0
 		}
 	}
-	// go timeCheck2(&packets, []byte("FIN"), seqNum, dataConn, dataAddr, &firstRTT)
+	go timeCheck2(&packets, []byte("FIN"), seqNum, dataConn, dataAddr, &firstRTT)
 
-	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
-	if err != nil {
-		fmt.Printf("Error sending FIN")
-	}
+	// _, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
+	// if err != nil {
+	// 	fmt.Printf("Error sending FIN")
+	// }
 
 	return
 }

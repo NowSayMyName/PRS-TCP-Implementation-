@@ -129,7 +129,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
-	seqNum := 0
+	seqNum := 1
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -184,12 +184,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		packets[seqNum] = time.Now()
 		_ = <-channelWindow
 
-		fmt.Printf(string(readingBuffer[:n]) + "\n")
+		// fmt.Printf(string(readingBuffer[:n]) + "\n")
 		go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
-			seqNum = 0
+			seqNum = 1
 		}
 	}
 

@@ -181,10 +181,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		_ = <-channelWindow
+		// _ = <-channelWindow
 
-		fmt.Printf(string(readingBuffer[:n]) + "\n")
-		go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
+		fmt.Printf(string(readingBuffer[:n]))
+		// go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {

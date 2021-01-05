@@ -184,7 +184,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		packets[seqNum] = time.Now()
 		_ = <-channelWindow
 
-		// fmt.Printf(string(readingBuffer[:n]) + "\n")
+		fmt.Printf(string(readingBuffer[:n]) + "\n")
 		go timeCheck2(&packets, readingBuffer[:n], seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++

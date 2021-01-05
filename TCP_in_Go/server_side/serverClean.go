@@ -129,7 +129,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
-	seqNum := 2
+	seqNum := 1
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -189,7 +189,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		seqNum++
 		if seqNum == 1000000 {
-			seqNum = 2
+			seqNum = 1
 		}
 	}
 

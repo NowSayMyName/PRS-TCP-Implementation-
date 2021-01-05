@@ -354,7 +354,9 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 func timeCheck2(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	(*packets)[seqNum] = time.Now()
 
-	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
+	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
+	fmt.Printf(string(buffer))
+
 	for {
 		go sendPacket(buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(time.Duration(*srtt))

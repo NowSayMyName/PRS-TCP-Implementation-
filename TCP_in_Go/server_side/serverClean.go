@@ -328,19 +328,23 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
-			timeDiff := int(time.Now().Sub((*packets)[packetNum]) / time.Microsecond)
-			if timeDiff > 10000000 {
-				timeDiff = 10000000
-			}
 
-			// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
+			//check si l'acquittement n'a pas déjà été reçu
+			if lastTime, ok := (*packets)[packetNum]; ok {
+				timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
+				if timeDiff > 10000000 {
+					timeDiff = 10000000
+				}
 
-			*srtt = getRTT(*srtt, timeDiff, 0.9, 0.1)
-			fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+				// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
 
-			delete(*packets, packetNum)
-			for i := 0; i < 1; i++ {
-				channelWindow <- true
+				*srtt = getRTT(*srtt, timeDiff, 0.9, 0.1)
+				fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+
+				delete(*packets, packetNum)
+				for i := 0; i < 1; i++ {
+					channelWindow <- true
+				}
 			}
 		}
 	}

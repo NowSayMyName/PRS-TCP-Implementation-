@@ -181,7 +181,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		packets[seqNum] = time.Now()
 		_ = <-channelWindow
 
 		fmt.Printf(string(readingBuffer[:n]) + "\n")
@@ -352,6 +351,8 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 }
 
 func timeCheck2(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	(*packets)[seqNum] = time.Now()
+
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	for {
 		go sendPacket(buffer, seqNum, dataConn, dataAddr)

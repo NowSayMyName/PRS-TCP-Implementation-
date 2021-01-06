@@ -81,7 +81,7 @@ func handleConnection(dataConn *net.UDPConn, firstRTT int) (err error) {
 	}
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
-	firstRTT = int(float32(firstRTT) * 3)
+	firstRTT = int(float32(firstRTT) * 5)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, firstRTT)
 	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
@@ -329,7 +329,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 			fmt.Printf("Error reading packets %v\n", err)
 			return err
 		}
-		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
+		// fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 
@@ -344,7 +344,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 					// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
 
 					*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
-					fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+					// fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
 					delete(*packets, key)
 					if len(*packets) == 0 {
@@ -366,7 +366,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 func packetHandling(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	(*packets)[seqNum] = time.Now()
 
-	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
+	// fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
 	// fmt.Printf(string(buffer))
 
 	for {
@@ -376,6 +376,6 @@ func packetHandling(packets *map[int]time.Time, buffer []byte, seqNum int, dataC
 		if _, ok := (*packets)[seqNum]; !ok {
 			break
 		}
-		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+		// fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 	}
 }

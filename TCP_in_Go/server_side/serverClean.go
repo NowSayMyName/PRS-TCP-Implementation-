@@ -331,7 +331,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 
 			//check si l'acquittement n'a pas déjà été reçu
 			for key := range *packets {
-				if key < packetNum {
+				if key <= packetNum {
 					timeDiff := int(time.Now().Sub((*packets)[key]) / time.Microsecond)
 					if timeDiff > 10000000 {
 						timeDiff = 10000000

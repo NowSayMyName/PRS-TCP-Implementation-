@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+type packet struct {
+	content  []byte
+	timeSent time.Time
+}
+
 func getArgs() (ipaddress string, portNumber int) {
 	if len(os.Args) != 3 {
 		fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
@@ -153,7 +158,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	channelWindow := make(chan bool)
 
-	packets := map[int]time.Time{}
+	packets := map[int]*packet{}
 
 	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 
@@ -177,7 +182,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindow
 
 		// fmt.Printf(string(readingBuffer[:n]))
-		go packetHandling(&packets, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
+		//append([]byte(nil), readingBuffer[:n]...)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -220,8 +226,12 @@ func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.A
 	return
 }
 
-func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int) (err error) {
+func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int) (err error) {
 	transmissionBuffer := make([]byte, 9)
+
+	//fast retransmit variables
+	lastReceivedSeqNum := 0
+	timesReceived := 1
 
 	channelWindow <- true
 	for *transmitting {
@@ -234,29 +244,44 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 
+			//test for fast retransmit
+			if lastReceivedSeqNum == packetNum {
+				timesReceived++
+			} else {
+				lastReceivedSeqNum = packetNum
+				timesReceived = 0
+			}
+
 			//check si l'acquittement n'a pas déjà été reçu
-			for key := range *packets {
-				if key <= packetNum {
-					timeDiff := int(time.Now().Sub((*packets)[key]) / time.Microsecond)
-					if timeDiff > 10000000 {
-						timeDiff = 10000000
-					}
-
-					// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
-
-					*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
-					fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
-
-					delete(*packets, key)
-					if len(*packets) == 0 {
-						channelWindow <- true
-					} else {
-						for i := 0; i < 2; i++ {
-							channelWindow <- false
+			if timesReceived == 1 {
+				for key := range *packets {
+					if key <= packetNum {
+						timeDiff := int(time.Now().Sub((*packets)[key].timeSent) / time.Microsecond)
+						if timeDiff > 10000000 {
+							timeDiff = 10000000
 						}
+
+						// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
+
+						*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
+						fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+
+						delete(*packets, key)
+						if len(*packets) == 0 {
+							channelWindow <- true
+						} else {
+							for i := 0; i < 2; i++ {
+								channelWindow <- false
+							}
+						}
+					} else {
+						break
 					}
-				} else {
-					break
+				}
+				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
+			} else if timesReceived == 3 {
+				if lostPacket, ok := (*packets)[lastReceivedSeqNum+1]; ok {
+					go packetHandling(packets, lostPacket, lastReceivedSeqNum+1, dataConn, dataAddr, srtt)
 				}
 			}
 		}
@@ -264,16 +289,18 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 	return
 }
 
-func packetHandling(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
 	// fmt.Printf(string(buffer))
 
 	for {
-		(*packets)[seqNum] = time.Now()
-		go sendPacket(buffer, seqNum, dataConn, dataAddr)
-		// time.Sleep(time.Duration(*srtt))
+		lastTime := time.Now()
+		buffer.timeSent = lastTime
+		(*packets)[seqNum] = buffer
+		go sendPacket(buffer.content, seqNum, dataConn, dataAddr)
 		time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
-		if _, ok := (*packets)[seqNum]; !ok {
+		//si le paquet a déjà été acquitté (n'est plus dans le tableau) ou qu'une autre go routine le retransmet déjà (fast retransmit)
+		if _, ok := (*packets)[seqNum]; !ok || (*packets)[seqNum].timeSent != lastTime {
 			break
 		}
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")

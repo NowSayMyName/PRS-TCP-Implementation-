@@ -281,6 +281,7 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
 				if lostPacket, ok := (*packets)[lastReceivedSeqNum+1]; ok {
+					fmt.Printf("FAST RETRANSMIT\n")
 					go packetHandling(packets, lostPacket, lastReceivedSeqNum+1, dataConn, dataAddr, srtt)
 				}
 			}

@@ -81,7 +81,7 @@ func handleConnection(dataConn *net.UDPConn, firstRTT int) (err error) {
 	}
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
-	firstRTT = int(float32(firstRTT) * 1.5)
+	firstRTT = int(float32(firstRTT) * 3)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, firstRTT)
 	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 

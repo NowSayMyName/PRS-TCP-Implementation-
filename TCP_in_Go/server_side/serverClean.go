@@ -81,7 +81,6 @@ func handleConnection(dataConn *net.UDPConn, firstRTT int) (err error) {
 	}
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
-	firstRTT = int(float32(firstRTT) * 5)
 	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, firstRTT)
 	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
@@ -274,7 +273,7 @@ func packetHandling(packets *map[int]time.Time, buffer []byte, seqNum int, dataC
 	for {
 		go sendPacket(buffer, seqNum, dataConn, dataAddr)
 		// time.Sleep(time.Duration(*srtt))
-		time.Sleep(time.Duration(*srtt) * time.Microsecond)
+		time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 		if _, ok := (*packets)[seqNum]; !ok {
 			break
 		}

@@ -193,7 +193,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 
 	//ici il faudrait attendre que TOUS les acquittements soient bien arrivés
-	_ = <-channelWindow
+	finished := false
+	for !finished {
+		finished = <-channelWindow
+	}
+
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
 		fmt.Printf("Error sending FIN")
@@ -343,8 +347,12 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 					fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
 					delete(*packets, key)
-					for i := 0; i < 2; i++ {
+					if len(*packets) == 0 {
 						channelWindow <- true
+					} else {
+						for i := 0; i < 2; i++ {
+							channelWindow <- false
+						}
 					}
 				} else {
 					break

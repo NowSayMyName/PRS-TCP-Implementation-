@@ -146,7 +146,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	f, err := os.Open(finalPath)
-	// f, err := os.Open("/Users/yoannrouxel-duval/go/src/github.com/NowSayMyName/PRS_TCP_Implementation/TCP_in_Go/server_side/newFile.mp3")
 	if err != nil {
 		fmt.Printf("Error opening file %v\n", err)
 		return err
@@ -163,15 +162,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	r := bufio.NewReader(f)
 
 	readingBuffer := make([]byte, bufferSize)
-	// var currentByte int64 = 0
 
 	endOfFile := false
+	//Reading the file
 	for !endOfFile {
-		//Reading the file
-		// n, err := f.ReadAt(readingBuffer, currentByte)
-		// currentByte += int64(n)
-		// fmt.Printf("READ %d BYTES\n", currentByte)
-
 		n, err := io.ReadFull(r, readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			fmt.Printf("REACHED EOF\n")

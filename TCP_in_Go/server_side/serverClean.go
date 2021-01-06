@@ -156,7 +156,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	transmitting := true
 	packets := map[int]time.Time{}
 
-	firstRTT := 1000000
+	firstRTT := 60000
 	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow, &firstRTT)
 
 	bufferSize := 1400
@@ -342,7 +342,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 				fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
 				delete(*packets, packetNum)
-				for i := 0; i < 1; i++ {
+				for i := 0; i < 2; i++ {
 					channelWindow <- true
 				}
 			}

@@ -61,16 +61,16 @@ func main() {
 			return
 		}
 
-		err = acceptConnection(publicConn, ipAddress, dataPort)
+		firstRTT, err := acceptConnection(publicConn, ipAddress, dataPort)
 		if err != nil {
 			fmt.Printf("Couldn't accept connection \n%v\n", err)
 			return
 		}
-		go handleConnection(dataConn)
+		go handleConnection(dataConn, firstRTT)
 	}
 }
 
-func handleConnection(dataConn *net.UDPConn) (err error) {
+func handleConnection(dataConn *net.UDPConn, firstRTT int) (err error) {
 	transmitting := true
 	buffer := make([]byte, 100)
 
@@ -81,54 +81,55 @@ func handleConnection(dataConn *net.UDPConn) (err error) {
 	}
 
 	fmt.Printf("SEND FILE : %s\n", buffer)
-	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr)
+	go sendFile(&transmitting, string(buffer), dataConn, remoteAddr, firstRTT)
 	// go listenOnDataPort(&transmitting, dataConn, remoteAddr, &windowSize)
 
 	return
 }
 
 /** waits for a connection and sends the public port number*/
-func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (err error) {
+func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (firstRTT int, err error) {
 	buffer := make([]byte, 100)
 
 	_, remoteAddr, err := publicConn.ReadFrom(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive SYN \n%v", err)
-		return err
+		return -1, err
 	}
 	fmt.Printf("%s\n", buffer)
 
 	if string(buffer[0:3]) != "SYN" {
 		fmt.Printf(string(buffer[0:3])+" %v", err)
-		return errors.New("Could not receive SYN")
+		return -1, errors.New("Could not receive SYN")
 	}
 
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
 	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
+	startTime := time.Now()
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
-		return err
+		return -1, err
 	}
 
 	_, err = publicConn.Read(buffer)
 	if err != nil {
 		fmt.Printf("Could not receive ACK \n%v", err)
-		return err
+		return -1, err
 	}
 	fmt.Printf("%s\n\n", buffer)
 
 	if string(buffer[0:3]) != "ACK" {
-		return errors.New("Couldn't receive ACK")
+		return -1, errors.New("Couldn't receive ACK")
 	}
 
 	fmt.Printf("Connection started on port %d\n", dataPort)
-	return nil
+	return int(time.Now().Sub(startTime) / time.Microsecond), err
 }
 
 /** takes a path to a file and sends it to the given address*/
-func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
+func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, firstRTT int) (err error) {
 	seqNum := 1
 
 	pwd, err := os.Getwd()
@@ -153,11 +154,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	channelWindow := make(chan bool)
 
-	transmitting := true
 	packets := map[int]time.Time{}
 
-	firstRTT := 60000
-	go listenACKGlobal(&packets, dataConn, dataAddr, &transmitting, channelWindow, &firstRTT)
+	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 
 	bufferSize := 1400
 	r := bufio.NewReader(f)

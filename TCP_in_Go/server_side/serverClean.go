@@ -355,7 +355,7 @@ func timeCheck2(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn 
 	(*packets)[seqNum] = time.Now()
 
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
-	fmt.Printf(string(buffer))
+	// fmt.Printf(string(buffer))
 
 	for {
 		go sendPacket(buffer, seqNum, dataConn, dataAddr)

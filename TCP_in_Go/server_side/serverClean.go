@@ -184,7 +184,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindow
 
 		// fmt.Printf(string(readingBuffer[:n]))
-		go timeCheck2(&packets, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(&packets, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -253,9 +253,9 @@ func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.A
 }
 
 /** retourne le nouveau RTT, avec beta = 1 - alpha (mais évite de répéter ce calcul) */
-func getRTT(lastRTT int, measuredRTT int, alpha float32, beta float32) int {
-	return int(alpha*float32(lastRTT) + beta*float32(measuredRTT))
-}
+// func getRTT(lastRTT int, measuredRTT int) int {
+// 	return int(0.9*float32(lastRTT) + 0.1*float32(measuredRTT))
+// }
 
 /*
 func timeCheck(n int, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, windowSize *int) {
@@ -330,20 +330,24 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 
 			//check si l'acquittement n'a pas déjà été reçu
-			if lastTime, ok := (*packets)[packetNum]; ok {
-				timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
-				if timeDiff > 10000000 {
-					timeDiff = 10000000
-				}
+			for key := range *packets {
+				if key < packetNum {
+					timeDiff := int(time.Now().Sub((*packets)[key]) / time.Microsecond)
+					if timeDiff > 10000000 {
+						timeDiff = 10000000
+					}
 
-				// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
+					// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
 
-				*srtt = getRTT(*srtt, timeDiff, 0.9, 0.1)
-				fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
+					*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
+					fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
-				delete(*packets, packetNum)
-				for i := 0; i < 2; i++ {
-					channelWindow <- true
+					delete(*packets, key)
+					for i := 0; i < 2; i++ {
+						channelWindow <- true
+					}
+				} else {
+					break
 				}
 			}
 		}
@@ -351,7 +355,7 @@ func listenACKGlobal(packets *map[int]time.Time, dataConn *net.UDPConn, dataAddr
 	return
 }
 
-func timeCheck2(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(packets *map[int]time.Time, buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	(*packets)[seqNum] = time.Now()
 
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")

@@ -136,6 +136,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, firstRTT int) (err error) {
 	seqNum := 1
+	windowSize := 1
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -160,8 +161,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	packets := map[int]*packet{}
 
-	firstRTT = 30000
-	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
+	firstRTT = 20000
+	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT, &windowSize)
 
 	bufferSize := 1400
 	r := bufio.NewReader(f)
@@ -184,6 +185,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		// fmt.Printf(string(readingBuffer[:n]))
 		go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
+		windowSize--
+		fmt.Printf("WINDOW SIZE : %d\n", windowSize)
 		//append([]byte(nil), readingBuffer[:n]...)
 
 		seqNum++
@@ -227,7 +230,7 @@ func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.A
 	return
 }
 
-func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int) (err error) {
+func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int, windowSize *int) (err error) {
 	transmissionBuffer := make([]byte, 9)
 
 	//fast retransmit variables
@@ -273,6 +276,7 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 						} else {
 							for i := 0; i < 2; i++ {
 								channelWindow <- false
+								*windowSize++
 							}
 						}
 					} else {

@@ -428,10 +428,11 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	msg := append([]byte(seq), content...)
 	var lastTime time.Time
 
+	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
 	ack := false
 	for !ack {
 		lastTime = time.Now()
-		fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
+		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + ":\n")
 
 		_, err := dataConn.WriteTo(msg, dataAddr)
 		if err != nil {
@@ -446,7 +447,6 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 		}(ackChannel, srtt)
 
 		ack = <-ackChannel
-
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)

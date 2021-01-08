@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -143,10 +144,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 
 	finalPath := pwd + "/" + path
-	// finalPath = strings.Replace(finalPath, "\n", "", -1)
-	// finalPath = strings.Replace(finalPath, "\r", "", -1)
-	// finalPath = strings.Replace(finalPath, "%", "", -1)
-	// finalPath = strings.Replace(finalPath, "\x00", "", -1)
+	finalPath = strings.Replace(finalPath, "\n", "", -1)
+	finalPath = strings.Replace(finalPath, "\r", "", -1)
+	finalPath = strings.Replace(finalPath, "%", "", -1)
+	finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	f, err := os.Open(finalPath)
 	if err != nil {

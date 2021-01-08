@@ -347,7 +347,7 @@ func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn
 
 func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	CWND := 1
-	numberOfACKInWindow := 0 //numberOfACKInWindow
+	numberOfACKInWindow := 0
 
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
@@ -474,6 +474,7 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	// }
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 	fmt.Printf("SRTT : %d\n", *srtt)
+	fmt.Printf("ENDING SEQNUM %d ROUTINE", seqNum)
 
 	mutex.Lock()
 	delete((*ackChannels), seqNum)

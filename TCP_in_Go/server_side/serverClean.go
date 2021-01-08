@@ -160,6 +160,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	packets := map[int]*packet{}
 
+	firstRTT = 30000
 	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 
 	bufferSize := 1400

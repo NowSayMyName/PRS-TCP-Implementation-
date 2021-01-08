@@ -377,7 +377,9 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
 						ackChannel <- true
-						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d", key)
+						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						delete((*ackChannels), key)
+
 						for i := 0; i < 2; i++ {
 							channelWindow <- false
 						}
@@ -475,10 +477,5 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	// }
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 	fmt.Printf("SRTT : %d\n", *srtt)
-
-	mutex.Lock()
-	delete((*ackChannels), seqNum)
-	mutex.Unlock()
-
 	fmt.Printf("ENDING SEQNUM %d ROUTINE\n", seqNum)
 }

@@ -436,7 +436,7 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 }
 
 func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	ackChannel := make(chan bool, 10)
+	ackChannel := make(chan bool, 100)
 
 	mutex.Lock()
 	(*ackChannels)[seqNum] = ackChannel

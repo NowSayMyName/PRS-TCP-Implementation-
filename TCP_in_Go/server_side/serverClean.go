@@ -369,9 +369,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 							CWND++
 							numberOfACKInWindow++
 							fmt.Printf("WINDOW SIZE : %d\n", CWND)
-						} else {
-							break
-						}
+						} //else {
+						// 	break
+						// }
 					}
 					mutex.Unlock()
 				} else {
@@ -381,9 +381,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 							(*ackChannels)[key] <- true
 							numberOfACKInWindow++
 							channelWindow <- false
-						} else {
-							break
-						}
+						} //else {
+						// 	break
+						// }
 					}
 					mutex.Unlock()
 

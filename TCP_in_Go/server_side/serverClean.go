@@ -359,8 +359,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 			//check si l'acquittement n'a pas déjà été reçu
 			if timesReceived == 1 {
 				if CWND < ssthresh {
-					//on acquitte tous packets avec un numéro de séquence inférieur
 					mutex.Lock()
+
+					//on acquitte tous packets avec un numéro de séquence inférieur
 					for key, ackChannel := range *ackChannels {
 						if key <= highestReceivedSeqNum {
 							ackChannel <- true
@@ -371,22 +372,22 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 							CWND++
 							numberOfACKInWindow++
 							fmt.Printf("WINDOW SIZE : %d\n", CWND)
-						} //else {
-						// 	break
-						// }
+						}
 					}
+
 					mutex.Unlock()
 				} else {
 					mutex.Lock()
+
+					//on acquitte tous packets avec un numéro de séquence inférieur
 					for key, ackChannel := range *ackChannels {
 						if key <= highestReceivedSeqNum {
 							ackChannel <- true
 							numberOfACKInWindow++
 							channelWindow <- false
-						} //else {
-						// 	break
-						// }
+						}
 					}
+
 					mutex.Unlock()
 
 					if numberOfACKInWindow >= CWND {
@@ -431,11 +432,11 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	msg := append([]byte(seq), content...)
 	var lastTime time.Time
 
-	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
+	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	ack := false
 	for !ack {
 		lastTime = time.Now()
-		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + ":\n")
+		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 
 		_, err := dataConn.WriteTo(msg, dataAddr)
 		if err != nil {

@@ -166,9 +166,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelWindow := make(chan bool)
 
 	packets := map[int]*packet{}
+	// orderChannels := map[int]chan bool{}
 
 	firstRTT = 20000
 	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
+	// go listenACKGlobal2(orderChannels, dataConn, dataAddr, connected, channelWindow)
 
 	bufferSize := 1400
 	r := bufio.NewReader(f)
@@ -191,6 +193,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		// fmt.Printf(string(readingBuffer[:n]))
 		go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
+		// go packetHandling2(orderChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+
 		//append([]byte(nil), readingBuffer[:n]...)
 
 		seqNum++
@@ -316,4 +320,99 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 		}
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 	}
+}
+
+func listenACKGlobal2(orderChannels map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
+	transmissionBuffer := make([]byte, 9)
+	windowSize := 0
+
+	//fast retransmit variables
+	lastReceivedSeqNum := 0
+	timesReceived := 0
+
+	channelWindow <- true
+	for *transmitting {
+		_, err = dataConn.Read(transmissionBuffer)
+		if err != nil {
+			fmt.Printf("Error reading packets %v\n", err)
+			return err
+		}
+		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
+		if string(transmissionBuffer[0:3]) == "ACK" {
+			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
+
+			//test for fast retransmit
+			if lastReceivedSeqNum == packetNum {
+				timesReceived++
+			} else {
+				lastReceivedSeqNum = packetNum
+				timesReceived = 1
+			}
+
+			//check si l'acquittement n'a pas déjà été reçu
+			if timesReceived == 1 {
+				//on acquitte tous packets avec un numéro de séquence inférieur
+				for key := range orderChannels {
+					if key <= packetNum {
+						orderChannels[key] <- true
+						delete(orderChannels, key)
+						for i := 0; i < 2; i++ {
+							channelWindow <- false
+						}
+						if len(orderChannels) == 0 {
+							channelWindow <- true
+						}
+						windowSize++
+						fmt.Printf("WINDOW SIZE : %d\n", windowSize)
+					} else {
+						break
+					}
+				}
+				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
+			} else if timesReceived == 3 {
+				if orderChannel, ok := orderChannels[lastReceivedSeqNum+1]; ok {
+					orderChannel <- false
+				}
+			}
+		}
+	}
+	return
+}
+
+func packetHandling2(orderChannels map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	orderChannels[seqNum] = make(chan bool)
+
+	seq := strconv.Itoa(seqNum)
+	zeros := 6 - len(seq)
+	for i := 0; i < zeros; i++ {
+		seq = "0" + seq
+	}
+	msg := append([]byte(seq), content...)
+	var lastTime time.Time
+
+	order := false
+	for !order { //tant que l'ACK n'est pas reçu
+		lastTime = time.Now()
+		fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
+
+		_, err := dataConn.WriteTo(msg, dataAddr)
+		if err != nil {
+			fmt.Printf("Error sending packet %v\n", err)
+			return
+		}
+
+		go func(orderChannel chan bool, srtt *int) {
+			//cette méthode peut être à l'origine de retransmissions supplémentaires (si un ordre de fast retransmit a été reçu et que cette fonction fini avant de recevoir l'ACK)
+			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
+			orderChannel <- false
+		}(orderChannels[seqNum], srtt)
+
+		order = <-orderChannels[seqNum]
+	}
+
+	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
+	if timeDiff > 10000000 {
+		timeDiff = 10000000
+	}
+	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 }

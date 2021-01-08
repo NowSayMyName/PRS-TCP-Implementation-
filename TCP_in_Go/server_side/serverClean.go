@@ -414,8 +414,10 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 }
 
 func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	ackChannel := make(chan bool)
+
 	mutex.Lock()
-	(*ackChannels)[seqNum] = make(chan bool)
+	(*ackChannels)[seqNum] = ackChannel
 	mutex.Unlock()
 
 	seq := strconv.Itoa(seqNum)
@@ -437,15 +439,14 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 			return
 		}
 
-		mutex.Lock()
 		go func(ackChannel chan bool, srtt *int) {
 			//cette méthode peut être à l'origine de retransmissions supplémentaires (si un ordre de fast retransmit a été reçu et que cette fonction fini avant de recevoir l'ACK)
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 			ackChannel <- false
-		}((*ackChannels)[seqNum], srtt)
-		mutex.Unlock()
+		}(ackChannel, srtt)
 
-		ack = <-(*ackChannels)[seqNum]
+		ack = <-ackChannel
+
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)

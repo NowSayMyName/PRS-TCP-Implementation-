@@ -387,10 +387,12 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 					}
 					mutex.Unlock()
 
-					if numberOfACKInWindow == CWND {
+					if numberOfACKInWindow >= CWND {
 						CWND++
-						channelWindow <- false
-						numberOfACKInWindow = 0
+						for i := 0; i < CWND; i++ {
+							channelWindow <- false
+						}
+						numberOfACKInWindow = ssthresh
 					}
 				}
 

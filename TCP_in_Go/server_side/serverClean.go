@@ -173,7 +173,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 	go listenACKGlobal2(mutex, ackChannels, dataConn, dataAddr, connected, 256, channelWindow)
 
-	bufferSize := 1400
+	bufferSize := 1494
 	r := bufio.NewReader(f)
 
 	readingBuffer := make([]byte, bufferSize)

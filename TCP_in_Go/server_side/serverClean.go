@@ -325,14 +325,17 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 
 func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
-	maxWindowSize := 0
-	currentWindowSize := 0
+	maxWindowSize := 1
+	currentWindowSize := 0 //cwnd
 
 	//fast retransmit variables
 	lastReceivedSeqNum := 0
 	timesReceived := 0
 
-	channelWindow <- true
+	for i := 0; i < maxWindowSize; i++ {
+		channelWindow <- true
+	}
+
 	for *transmitting {
 		_, err = dataConn.Read(transmissionBuffer)
 		if err != nil {
@@ -364,6 +367,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 							}
 
 							maxWindowSize++
+							currentWindowSize++
 							fmt.Printf("WINDOW SIZE : %d\n", maxWindowSize)
 						} else {
 							break
@@ -393,9 +397,11 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				}
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
-				if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
-					ackChannel <- false
-				}
+				// if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
+				(*ackChannels)[lastReceivedSeqNum+1] <- false
+				// }
+				ssthresh = currentWindowSize / 2
+				currentWindowSize /= 2
 			}
 		}
 	}

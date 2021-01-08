@@ -409,10 +409,11 @@ func packetHandling2(ackChannels *map[int](chan bool), content []byte, seqNum in
 		ack = <-(*ackChannels)[seqNum]
 	}
 
-	delete((*ackChannels), seqNum)
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
 	if timeDiff > 10000000 {
 		timeDiff = 10000000
 	}
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
+
+	delete((*ackChannels), seqNum)
 }

@@ -377,6 +377,7 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
 						ackChannel <- true
+						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d", key)
 						for i := 0; i < 2; i++ {
 							channelWindow <- false
 						}

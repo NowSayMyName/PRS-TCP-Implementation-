@@ -250,7 +250,7 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 				timesReceived++
 			} else {
 				lastReceivedSeqNum = packetNum
-				timesReceived = 0
+				timesReceived = 1
 			}
 
 			//check si l'acquittement n'a pas déjà été reçu

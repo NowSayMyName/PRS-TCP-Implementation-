@@ -166,11 +166,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelWindow := make(chan bool)
 
 	// packets := map[int]*packet{}
-	ackChannels := map[int]chan bool{}
+	ackChannels := &map[int]chan bool{}
+	var mutex = &sync.Mutex{}
 
 	firstRTT = 20000
 	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
-	go listenACKGlobal2(&ackChannels, dataConn, dataAddr, connected, channelWindow)
+	go listenACKGlobal2(mutex, ackChannels, dataConn, dataAddr, connected, channelWindow)
 
 	bufferSize := 1400
 	r := bufio.NewReader(f)
@@ -193,7 +194,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		// fmt.Printf(string(readingBuffer[:n]))
 		// go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
-		go packetHandling2(&ackChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling2(mutex, ackChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		//append([]byte(nil), readingBuffer[:n]...)
 
@@ -322,7 +323,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 	}
 }
 
-func listenACKGlobal2(ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
+func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 	windowSize := 0
 
@@ -352,6 +353,7 @@ func listenACKGlobal2(ackChannels *map[int](chan bool), dataConn *net.UDPConn, d
 			//check si l'acquittement n'a pas déjà été reçu
 			if timesReceived == 1 {
 				//on acquitte tous packets avec un numéro de séquence inférieur
+				mutex.Lock()
 				for key := range *ackChannels {
 					if key <= packetNum {
 						(*ackChannels)[key] <- true
@@ -367,6 +369,7 @@ func listenACKGlobal2(ackChannels *map[int](chan bool), dataConn *net.UDPConn, d
 						break
 					}
 				}
+				mutex.Unlock()
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
 				if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
@@ -378,8 +381,10 @@ func listenACKGlobal2(ackChannels *map[int](chan bool), dataConn *net.UDPConn, d
 	return
 }
 
-func packetHandling2(ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	mutex.Lock()
 	(*ackChannels)[seqNum] = make(chan bool)
+	mutex.Unlock()
 
 	seq := strconv.Itoa(seqNum)
 	zeros := 6 - len(seq)
@@ -415,5 +420,7 @@ func packetHandling2(ackChannels *map[int](chan bool), content []byte, seqNum in
 	}
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 
+	mutex.Lock()
 	delete((*ackChannels), seqNum)
+	mutex.Unlock()
 }

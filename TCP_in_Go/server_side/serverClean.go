@@ -326,7 +326,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 	maxWindowSize := 1
-	currentWindowSize := 0 //cwnd
+	CWND := 0 //cwnd
 
 	//fast retransmit variables
 	lastReceivedSeqNum := 0
@@ -367,7 +367,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 							}
 
 							maxWindowSize++
-							currentWindowSize++
+							CWND++
 							fmt.Printf("WINDOW SIZE : %d\n", maxWindowSize)
 						} else {
 							break
@@ -379,16 +379,18 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 					for key := range *ackChannels {
 						if key <= packetNum {
 							(*ackChannels)[key] <- true
-							currentWindowSize++
+							CWND++
+							channelWindow <- false
 						} else {
 							break
 						}
 					}
 					mutex.Unlock()
 
-					if currentWindowSize == maxWindowSize {
+					if CWND == maxWindowSize {
 						maxWindowSize++
-						currentWindowSize = 0
+						channelWindow <- false
+						CWND = 0
 					}
 				}
 
@@ -400,8 +402,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				// if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
 				(*ackChannels)[lastReceivedSeqNum+1] <- false
 				// }
-				ssthresh = currentWindowSize / 2
-				currentWindowSize /= 2
+				CWND /= 2
+				maxWindowSize = CWND
+				ssthresh = CWND
 			}
 		}
 	}
@@ -442,9 +445,9 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
-	if timeDiff > 10000000 {
-		timeDiff = 10000000
-	}
+	// if timeDiff > 10000000 {
+	// 	timeDiff = 10000000
+	// }
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 
 	mutex.Lock()

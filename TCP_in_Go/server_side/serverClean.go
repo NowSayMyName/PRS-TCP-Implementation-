@@ -166,7 +166,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelWindow := make(chan bool)
 
 	// packets := map[int]*packet{}
-	allACKChannel := make(chan []byte)
+	allACKChannel := make(chan int)
 	ackChannels := &map[int]chan bool{}
 	var mutex = &sync.Mutex{}
 
@@ -327,7 +327,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 	}
 }*/
 
-func listenACK(transmitting *bool, allACKChannel chan []byte, dataConn *net.UDPConn) {
+func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn) {
 	transmissionBuffer := make([]byte, 9)
 
 	for *transmitting {
@@ -337,16 +337,15 @@ func listenACK(transmitting *bool, allACKChannel chan []byte, dataConn *net.UDPC
 			return
 		}
 
-		allACKChannel <- transmissionBuffer
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
-		// if string(transmissionBuffer[0:3]) == "ACK" {
-		// 	packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
-		// allACKChannel <- packetNum
-		// }
+		if string(transmissionBuffer[0:3]) == "ACK" {
+			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
+			allACKChannel <- packetNum
+		}
 	}
 }
 
-func handleACK(mutex *sync.Mutex, allACKChannel chan []byte, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
+func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	CWND := 1
 	numberOfACKInWindow := 0
 
@@ -359,79 +358,75 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan []byte, ackChannels *map[in
 	}
 
 	for *transmitting {
-		packet := <-allACKChannel
+		packetNum := <-allACKChannel
 
-		if string(packet[0:3]) == "ACK" {
-			packetNum, _ := strconv.Atoi(string(packet[3:9]))
+		//test for fast retransmit
+		if highestReceivedSeqNum == packetNum {
+			timesReceived++
+		} else if highestReceivedSeqNum < packetNum {
+			highestReceivedSeqNum = packetNum
+			timesReceived = 1
+		}
 
-			//test for fast retransmit
-			if highestReceivedSeqNum == packetNum {
-				timesReceived++
-			} else if highestReceivedSeqNum < packetNum {
-				highestReceivedSeqNum = packetNum
-				timesReceived = 1
-			}
+		//check si l'acquittement n'a pas déjà été reçu
+		if timesReceived == 1 {
+			if CWND < ssthresh {
+				mutex.Lock()
 
-			//check si l'acquittement n'a pas déjà été reçu
-			if timesReceived == 1 {
-				if CWND < ssthresh {
-					mutex.Lock()
-
-					//on acquitte tous packets avec un numéro de séquence inférieur
-					for key, ackChannel := range *ackChannels {
-						if key <= highestReceivedSeqNum {
-							ackChannel <- true
-							for i := 0; i < 2; i++ {
-								channelWindow <- false
-							}
-
-							CWND++
-							numberOfACKInWindow++
-							fmt.Printf("WINDOW SIZE : %d\n", CWND)
-						}
-					}
-
-					mutex.Unlock()
-				} else {
-					mutex.Lock()
-
-					//on acquitte tous packets avec un numéro de séquence inférieur
-					for key, ackChannel := range *ackChannels {
-						if key <= highestReceivedSeqNum {
-							ackChannel <- true
-							numberOfACKInWindow++
+				//on acquitte tous packets avec un numéro de séquence inférieur
+				for key, ackChannel := range *ackChannels {
+					if key <= highestReceivedSeqNum {
+						ackChannel <- true
+						for i := 0; i < 2; i++ {
 							channelWindow <- false
 						}
-					}
 
-					mutex.Unlock()
-
-					if numberOfACKInWindow >= CWND {
 						CWND++
-						channelWindow <- false
-						numberOfACKInWindow = 0
+						numberOfACKInWindow++
 						fmt.Printf("WINDOW SIZE : %d\n", CWND)
 					}
 				}
 
-				if len((*ackChannels)) == 0 {
-					channelWindow <- true
-				}
-				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
-			} else if timesReceived == 3 {
-				fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
-
+				mutex.Unlock()
+			} else {
 				mutex.Lock()
-				if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
-					ackChannel <- false
-					// (*ackChannels)[highestReceivedSeqNum+1] <- false
+
+				//on acquitte tous packets avec un numéro de séquence inférieur
+				for key, ackChannel := range *ackChannels {
+					if key <= highestReceivedSeqNum {
+						ackChannel <- true
+						numberOfACKInWindow++
+						channelWindow <- false
+					}
 				}
+
 				mutex.Unlock()
 
-				CWND /= 2
-				ssthresh = CWND
-				numberOfACKInWindow = 0
+				if numberOfACKInWindow >= CWND {
+					CWND++
+					channelWindow <- false
+					numberOfACKInWindow = 0
+					fmt.Printf("WINDOW SIZE : %d\n", CWND)
+				}
 			}
+
+			if len((*ackChannels)) == 0 {
+				channelWindow <- true
+			}
+			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
+		} else if timesReceived == 3 {
+			fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
+
+			mutex.Lock()
+			if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
+				ackChannel <- false
+				// (*ackChannels)[highestReceivedSeqNum+1] <- false
+			}
+			mutex.Unlock()
+
+			CWND /= 2
+			ssthresh = CWND
+			numberOfACKInWindow = 0
 		}
 	}
 	return

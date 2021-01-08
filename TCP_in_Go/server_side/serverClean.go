@@ -232,7 +232,7 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 
 	//fast retransmit variables
 	lastReceivedSeqNum := 0
-	timesReceived := 1
+	timesReceived := 0
 
 	channelWindow <- true
 	for *transmitting {

@@ -271,13 +271,12 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 						fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
 
 						delete(*packets, key)
+						for i := 0; i < 2; i++ {
+							channelWindow <- false
+							*windowSize++
+						}
 						if len(*packets) == 0 {
 							channelWindow <- true
-						} else {
-							for i := 0; i < 2; i++ {
-								channelWindow <- false
-								*windowSize++
-							}
 						}
 					} else {
 						break

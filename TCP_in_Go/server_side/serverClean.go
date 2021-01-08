@@ -355,7 +355,6 @@ func listenACKGlobal2(orderChannels *map[int](chan bool), dataConn *net.UDPConn,
 				for key := range *orderChannels {
 					if key <= packetNum {
 						(*orderChannels)[key] <- true
-						delete((*orderChannels), key)
 						for i := 0; i < 2; i++ {
 							channelWindow <- false
 						}
@@ -410,6 +409,7 @@ func packetHandling2(orderChannels *map[int](chan bool), content []byte, seqNum 
 		order = <-(*orderChannels)[seqNum]
 	}
 
+	delete((*orderChannels), seqNum)
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
 	if timeDiff > 10000000 {
 		timeDiff = 10000000

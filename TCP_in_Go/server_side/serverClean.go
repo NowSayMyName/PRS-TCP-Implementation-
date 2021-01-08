@@ -394,6 +394,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 						CWND++
 						channelWindow <- false
 						numberOfACKInWindow = 0
+						fmt.Printf("WINDOW SIZE : %d\n", CWND)
 					}
 				}
 
@@ -402,12 +403,15 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				}
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
+				fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
+
 				mutex.Lock()
 				if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
 					ackChannel <- false
 					// (*ackChannels)[highestReceivedSeqNum+1] <- false
 				}
 				mutex.Unlock()
+
 				CWND /= 2
 				ssthresh = CWND
 				numberOfACKInWindow = 0

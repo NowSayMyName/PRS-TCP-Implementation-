@@ -192,11 +192,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		_ = <-channelWindow
+		// _ = <-channelWindow
 
 		// fmt.Printf(string(readingBuffer[:n]))
 		// go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
-		go packetHandling2(mutex, ackChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutex, ackChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT, channelWindow)
 
 		//append([]byte(nil), readingBuffer[:n]...)
 
@@ -435,7 +435,7 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 	return
 }
 
-func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int, channelWindow chan bool) {
 	ackChannel := make(chan bool, 100)
 
 	mutex.Lock()
@@ -453,6 +453,7 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 	ack := false
 	for !ack {
+		_ = <-channelWindow
 		lastTime = time.Now()
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 

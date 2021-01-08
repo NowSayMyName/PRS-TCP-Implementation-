@@ -349,7 +349,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 			//test for fast retransmit
 			if lastReceivedSeqNum == packetNum {
 				timesReceived++
-			} else {
+			} else if lastReceivedSeqNum < packetNum {
 				lastReceivedSeqNum = packetNum
 				timesReceived = 1
 			}

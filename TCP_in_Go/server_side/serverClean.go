@@ -457,6 +457,7 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 	// 	timeDiff = 10000000
 	// }
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
+	fmt.Printf("SRTT : %d\n", *srtt)
 
 	mutex.Lock()
 	delete((*ackChannels), seqNum)

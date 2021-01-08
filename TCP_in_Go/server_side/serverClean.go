@@ -9,12 +9,19 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 type packet struct {
 	content  []byte
 	timeSent time.Time
+}
+
+type safeSRTT struct {
+	// https://bbengfort.github.io/snippets/2017/02/21/synchronizing-structs.html
+	sync.Mutex
+	SRTT int
 }
 
 func getArgs() (ipaddress string, portNumber int) {

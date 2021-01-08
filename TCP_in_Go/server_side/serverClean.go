@@ -400,7 +400,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
 				// if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
+				mutex.Lock()
 				(*ackChannels)[lastReceivedSeqNum+1] <- false
+				mutex.Unlock()
 				// }
 				CWND /= 2
 				ssthresh = CWND
@@ -435,11 +437,13 @@ func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), conten
 			return
 		}
 
+		mutex.Lock()
 		go func(ackChannel chan bool, srtt *int) {
 			//cette méthode peut être à l'origine de retransmissions supplémentaires (si un ordre de fast retransmit a été reçu et que cette fonction fini avant de recevoir l'ACK)
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 			ackChannel <- false
 		}((*ackChannels)[seqNum], srtt)
+		mutex.Unlock()
 
 		ack = <-(*ackChannels)[seqNum]
 	}

@@ -325,14 +325,14 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 
 func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
-	maxWindowSize := 1
-	CWND := 0 //cwnd
+	CWND := 1
+	numberOfACKInWindow := 0 //numberOfACKInWindow
 
 	//fast retransmit variables
 	lastReceivedSeqNum := 0
 	timesReceived := 0
 
-	for i := 0; i < maxWindowSize; i++ {
+	for i := 0; i < CWND; i++ {
 		channelWindow <- true
 	}
 
@@ -356,7 +356,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 
 			//check si l'acquittement n'a pas déjà été reçu
 			if timesReceived == 1 {
-				if maxWindowSize < ssthresh {
+				if CWND < ssthresh {
 					//on acquitte tous packets avec un numéro de séquence inférieur
 					mutex.Lock()
 					for key := range *ackChannels {
@@ -366,9 +366,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 								channelWindow <- false
 							}
 
-							maxWindowSize++
 							CWND++
-							fmt.Printf("WINDOW SIZE : %d\n", maxWindowSize)
+							numberOfACKInWindow++
+							fmt.Printf("WINDOW SIZE : %d\n", CWND)
 						} else {
 							break
 						}
@@ -379,7 +379,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 					for key := range *ackChannels {
 						if key <= packetNum {
 							(*ackChannels)[key] <- true
-							CWND++
+							numberOfACKInWindow++
 							channelWindow <- false
 						} else {
 							break
@@ -387,10 +387,10 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 					}
 					mutex.Unlock()
 
-					if CWND == maxWindowSize {
-						maxWindowSize++
+					if numberOfACKInWindow == CWND {
+						CWND++
 						channelWindow <- false
-						CWND = 0
+						numberOfACKInWindow = 0
 					}
 				}
 
@@ -403,7 +403,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				(*ackChannels)[lastReceivedSeqNum+1] <- false
 				// }
 				CWND /= 2
-				maxWindowSize = CWND
+				numberOfACKInWindow = CWND
 				ssthresh = CWND
 			}
 		}

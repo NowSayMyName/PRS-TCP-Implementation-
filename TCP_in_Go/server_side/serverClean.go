@@ -166,7 +166,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelWindow := make(chan bool, 100)
 
 	// packets := map[int]*packet{}
-	allACKChannel := make(chan int, 100)
+	allACKChannel := make(chan int, 1000)
 	ackChannels := &map[int]chan bool{}
 	var mutex = &sync.Mutex{}
 
@@ -204,7 +204,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		if seqNum == 1000000 {
 			seqNum = 1
 		}
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		// time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
 	//ici il faudrait attendre que TOUS les acquittements soient bien arrivés

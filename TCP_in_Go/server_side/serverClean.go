@@ -202,6 +202,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		if seqNum == 1000000 {
 			seqNum = 1
 		}
+		time.Sleep(time.Duration(1000000000))
 	}
 
 	//ici il faudrait attendre que TOUS les acquittements soient bien arrivés
@@ -220,6 +221,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }
 
+/*
 func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
 	//Sending fragment
 	seq := strconv.Itoa(seqNum)
@@ -321,7 +323,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 		}
 		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 	}
-}
+}*/
 
 func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)

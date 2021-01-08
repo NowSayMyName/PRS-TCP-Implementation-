@@ -244,7 +244,7 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 	windowSize := 0
 
 	//fast retransmit variables
-	lastReceivedSeqNum := 0
+	highestReceivedSeqNum := 0
 	timesReceived := 0
 
 	channelWindow <- true
@@ -259,10 +259,10 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 
 			//test for fast retransmit
-			if lastReceivedSeqNum == packetNum {
+			if highestReceivedSeqNum == packetNum {
 				timesReceived++
 			} else {
-				lastReceivedSeqNum = packetNum
+				highestReceivedSeqNum = packetNum
 				timesReceived = 1
 			}
 
@@ -295,9 +295,9 @@ func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr n
 				}
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
-				if lostPacket, ok := (*packets)[lastReceivedSeqNum+1]; ok {
+				if lostPacket, ok := (*packets)[highestReceivedSeqNum+1]; ok {
 					fmt.Printf("FAST RETRANSMIT\n")
-					go packetHandling(packets, lostPacket, lastReceivedSeqNum+1, dataConn, dataAddr, srtt)
+					go packetHandling(packets, lostPacket, highestReceivedSeqNum+1, dataConn, dataAddr, srtt)
 				}
 			}
 		}
@@ -329,7 +329,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 	numberOfACKInWindow := 0 //numberOfACKInWindow
 
 	//fast retransmit variables
-	lastReceivedSeqNum := 0
+	highestReceivedSeqNum := 0
 	timesReceived := 0
 
 	for i := 0; i < CWND; i++ {
@@ -347,10 +347,10 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 
 			//test for fast retransmit
-			if lastReceivedSeqNum == packetNum {
+			if highestReceivedSeqNum == packetNum {
 				timesReceived++
-			} else if lastReceivedSeqNum < packetNum {
-				lastReceivedSeqNum = packetNum
+			} else if highestReceivedSeqNum < packetNum {
+				highestReceivedSeqNum = packetNum
 				timesReceived = 1
 			}
 
@@ -360,7 +360,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 					//on acquitte tous packets avec un numéro de séquence inférieur
 					mutex.Lock()
 					for key := range *ackChannels {
-						if key <= packetNum {
+						if key <= highestReceivedSeqNum {
 							(*ackChannels)[key] <- true
 							for i := 0; i < 2; i++ {
 								channelWindow <- false
@@ -377,7 +377,7 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				} else {
 					mutex.Lock()
 					for key := range *ackChannels {
-						if key <= packetNum {
+						if key <= highestReceivedSeqNum {
 							(*ackChannels)[key] <- true
 							numberOfACKInWindow++
 							channelWindow <- false
@@ -399,9 +399,9 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				}
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
-				// if ackChannel, ok := (*ackChannels)[lastReceivedSeqNum+1]; ok {
+				// if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
 				mutex.Lock()
-				(*ackChannels)[lastReceivedSeqNum+1] <- false
+				(*ackChannels)[highestReceivedSeqNum+1] <- false
 				mutex.Unlock()
 				// }
 				CWND /= 2

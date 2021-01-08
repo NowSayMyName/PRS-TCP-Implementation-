@@ -403,8 +403,8 @@ func listenACKGlobal2(mutex *sync.Mutex, ackChannels *map[int](chan bool), dataC
 				(*ackChannels)[lastReceivedSeqNum+1] <- false
 				// }
 				CWND /= 2
-				numberOfACKInWindow = CWND
 				ssthresh = CWND
+				numberOfACKInWindow = 0
 			}
 		}
 	}

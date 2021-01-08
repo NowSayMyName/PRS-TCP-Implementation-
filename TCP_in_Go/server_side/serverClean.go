@@ -163,10 +163,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 	defer f.Close()
 
-	channelWindow := make(chan bool)
+	channelWindow := make(chan bool, 100)
 
 	// packets := map[int]*packet{}
-	allACKChannel := make(chan int)
+	allACKChannel := make(chan int, 100)
 	ackChannels := &map[int]chan bool{}
 	var mutex = &sync.Mutex{}
 
@@ -436,7 +436,7 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 }
 
 func packetHandling2(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	ackChannel := make(chan bool)
+	ackChannel := make(chan bool, 10)
 
 	mutex.Lock()
 	(*ackChannels)[seqNum] = ackChannel

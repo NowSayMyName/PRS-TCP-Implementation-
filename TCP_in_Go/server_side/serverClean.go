@@ -165,12 +165,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	channelWindow := make(chan bool)
 
-	packets := map[int]*packet{}
-	// orderChannels := map[int]chan bool{}
+	// packets := map[int]*packet{}
+	orderChannels := map[int]chan bool{}
 
 	firstRTT = 20000
-	go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
-	// go listenACKGlobal2(orderChannels, dataConn, dataAddr, connected, channelWindow)
+	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
+	go listenACKGlobal2(&orderChannels, dataConn, dataAddr, connected, channelWindow)
 
 	bufferSize := 1400
 	r := bufio.NewReader(f)
@@ -192,8 +192,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindow
 
 		// fmt.Printf(string(readingBuffer[:n]))
-		go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
-		// go packetHandling2(orderChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		// go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling2(&orderChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		//append([]byte(nil), readingBuffer[:n]...)
 
@@ -322,7 +322,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 	}
 }
 
-func listenACKGlobal2(orderChannels map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
+func listenACKGlobal2(orderChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool) (err error) {
 	transmissionBuffer := make([]byte, 9)
 	windowSize := 0
 
@@ -352,14 +352,14 @@ func listenACKGlobal2(orderChannels map[int](chan bool), dataConn *net.UDPConn, 
 			//check si l'acquittement n'a pas déjà été reçu
 			if timesReceived == 1 {
 				//on acquitte tous packets avec un numéro de séquence inférieur
-				for key := range orderChannels {
+				for key := range *orderChannels {
 					if key <= packetNum {
-						orderChannels[key] <- true
-						delete(orderChannels, key)
+						(*orderChannels)[key] <- true
+						delete((*orderChannels), key)
 						for i := 0; i < 2; i++ {
 							channelWindow <- false
 						}
-						if len(orderChannels) == 0 {
+						if len((*orderChannels)) == 0 {
 							channelWindow <- true
 						}
 						windowSize++
@@ -370,7 +370,7 @@ func listenACKGlobal2(orderChannels map[int](chan bool), dataConn *net.UDPConn, 
 				}
 				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 			} else if timesReceived == 3 {
-				if orderChannel, ok := orderChannels[lastReceivedSeqNum+1]; ok {
+				if orderChannel, ok := (*orderChannels)[lastReceivedSeqNum+1]; ok {
 					orderChannel <- false
 				}
 			}
@@ -379,8 +379,8 @@ func listenACKGlobal2(orderChannels map[int](chan bool), dataConn *net.UDPConn, 
 	return
 }
 
-func packetHandling2(orderChannels map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	orderChannels[seqNum] = make(chan bool)
+func packetHandling2(orderChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	(*orderChannels)[seqNum] = make(chan bool)
 
 	seq := strconv.Itoa(seqNum)
 	zeros := 6 - len(seq)
@@ -405,9 +405,9 @@ func packetHandling2(orderChannels map[int](chan bool), content []byte, seqNum i
 			//cette méthode peut être à l'origine de retransmissions supplémentaires (si un ordre de fast retransmit a été reçu et que cette fonction fini avant de recevoir l'ACK)
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 			orderChannel <- false
-		}(orderChannels[seqNum], srtt)
+		}((*orderChannels)[seqNum], srtt)
 
-		order = <-orderChannels[seqNum]
+		order = <-(*orderChannels)[seqNum]
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)

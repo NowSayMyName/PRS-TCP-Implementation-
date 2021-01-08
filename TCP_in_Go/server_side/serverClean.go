@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -111,8 +110,8 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 	str := "SYN-ACK" + strconv.Itoa(dataPort)
 	fmt.Println(str)
 
-	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	startTime := time.Now()
+	_, err = publicConn.WriteTo([]byte(str), remoteAddr)
 	if err != nil {
 		fmt.Printf("Could not send SYN-ACK \n%v", err)
 		return -1, err
@@ -144,10 +143,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 
 	finalPath := pwd + "/" + path
-	finalPath = strings.Replace(finalPath, "\n", "", -1)
-	finalPath = strings.Replace(finalPath, "\r", "", -1)
-	finalPath = strings.Replace(finalPath, "%", "", -1)
-	finalPath = strings.Replace(finalPath, "\x00", "", -1)
+	// finalPath = strings.Replace(finalPath, "\n", "", -1)
+	// finalPath = strings.Replace(finalPath, "\r", "", -1)
+	// finalPath = strings.Replace(finalPath, "%", "", -1)
+	// finalPath = strings.Replace(finalPath, "\x00", "", -1)
 
 	f, err := os.Open(finalPath)
 	if err != nil {

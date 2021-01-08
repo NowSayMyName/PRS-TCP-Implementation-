@@ -204,7 +204,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		if seqNum == 1000000 {
 			seqNum = 1
 		}
-		// time.Sleep(time.Duration(1000) * time.Millisecond)
+		time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
 	//ici il faudrait attendre que TOUS les acquittements soient bien arrivés

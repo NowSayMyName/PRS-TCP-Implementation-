@@ -201,7 +201,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowNewPackets
-		go packetHandling(mutex, doubleChannels, channelLoss, channelPacketCreation, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutex, doubleChannels, channelLoss, channelPacketCreation, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -371,7 +371,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 }
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
-func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan int, channelPacketCreation chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan int, channelPacketCreation chan bool, channelWindowGlobal chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	dB := doubleChannel{make(chan int, 100), make(chan bool, 100)}
 
 	//création de la channel de communication
@@ -421,6 +421,8 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 
 			if ack == lastTimeInt {
 				channelLoss <- seqNum
+				channelWindowGlobal <- false
+
 				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
 				_ = <-dB.windowChannel
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")

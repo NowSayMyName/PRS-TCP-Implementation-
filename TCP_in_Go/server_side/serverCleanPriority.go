@@ -208,10 +208,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		sort.Ints(packetsToBeSent)
 
 		seqNum++
-		if seqNum == 1000000 {
-			seqNum = 1
-		}
-		// time.Sleep(time.Duration(500) * time.Millisecond)
+		time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier

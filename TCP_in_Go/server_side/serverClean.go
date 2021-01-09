@@ -269,8 +269,10 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 
 		if len(*retransmissionNeeded) == 0 {
 			channelWindowNewPackets <- true
+			fmt.Printf("SENDING NEW PACKET")
 		} else {
 			(*doubleChannels)[0].windowChannel <- true
+			fmt.Printf("RETRANSMITTING PACKET")
 		}
 	}
 }

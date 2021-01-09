@@ -269,10 +269,10 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 
 		if len(*retransmissionNeeded) == 0 {
 			channelWindowNewPackets <- true
-			fmt.Printf("SENDING NEW PACKET")
+			fmt.Printf("SENDING NEW PACKET\n")
 		} else {
 			(*doubleChannels)[0].windowChannel <- true
-			fmt.Printf("RETRANSMITTING PACKET")
+			fmt.Printf("RETRANSMITTING PACKET\n")
 		}
 	}
 }
@@ -318,7 +318,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 
 						*CWND++
 						*numberOfACKInWindow++
-						fmt.Printf("WINDOW SIZE : %d\n", CWND)
+						fmt.Printf("WINDOW SIZE : %d\n", *CWND)
 					}
 				}
 

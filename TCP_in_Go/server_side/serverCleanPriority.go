@@ -203,6 +203,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		_ = <-channelWindowNewPackets
 		go packetHandling(mutex, doubleChannels, channelLoss, channelPacketCreation, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
+		//ajoute l'élément et trie la slice
+		packetsToBeSent = append(packetsToBeSent, seqNum)
+		sort.Ints(packetsToBeSent)
+
 		seqNum++
 		if seqNum == 1000000 {
 			seqNum = 1

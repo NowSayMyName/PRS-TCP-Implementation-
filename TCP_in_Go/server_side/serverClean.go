@@ -179,6 +179,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	go listenACK(connected, dataConn, allACKChannel)
 	go handleACK(connected, mutex, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow)
 	go handleLostPackets(connected, channelLoss, &retransmissionNeeded, &ssthresh, &CWND, &numberOfACKInWindow)
+	go handleWindowPriority(connected, doubleChannels, channelWindowGlobal, channelWindowNewPackets, &retransmissionNeeded)
 
 	//variables de lecture du fichier
 	bufferSize := 1494

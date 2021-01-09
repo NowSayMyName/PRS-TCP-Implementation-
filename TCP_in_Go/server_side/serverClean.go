@@ -327,13 +327,13 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 				channelWindowGlobal <- true
 			}
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
-		} else if timesReceived == 3 {
-			fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
+		} //else if timesReceived == 3 {
+		// 	fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
 
-			mutex.Lock()
-			(*ackChannels)[highestReceivedSeqNum+1] <- -1
-			mutex.Unlock()
-		}
+		// 	mutex.Lock()
+		// 	(*ackChannels)[highestReceivedSeqNum+1] <- -1
+		// 	mutex.Unlock()
+		// }
 	}
 	return
 }

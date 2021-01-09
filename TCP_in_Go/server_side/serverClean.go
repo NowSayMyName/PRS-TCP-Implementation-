@@ -163,30 +163,32 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 	defer f.Close()
 
+	// variables de fonctionnement de transmission
 	ssthresh := 256
 	CWND := 1
 	numberOfACKInWindow := 0
+	firstRTT = 20000
 
+	//toutes les channels de communication
 	channelWindow := make(chan bool, 100)
 	channelLoss := make(chan bool, 100)
-
-	// packets := map[int]*packet{}
 	allACKChannel := make(chan int, 1000)
 	ackChannels := &map[int]chan int{}
+
+	//mutex de protection de la map ackChannels
 	var mutex = &sync.Mutex{}
 
-	firstRTT = 20000
 	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 	go listenACK(connected, allACKChannel, dataConn)
 	go handleACK(connected, dataConn, dataAddr, mutex, allACKChannel, ackChannels, channelWindow, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 	go handleLostPackets(connected, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 
+	//variables de lecture du fichier
 	bufferSize := 1494
 	r := bufio.NewReader(f)
-
 	readingBuffer := make([]byte, bufferSize)
-
 	endOfFile := false
+
 	//Reading the file
 	for !endOfFile {
 		n, err := io.ReadFull(r, readingBuffer)
@@ -213,7 +215,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		// time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
-	//ici il faudrait attendre que TOUS les acquittements soient bien arrivés
+	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
 	finished := false
 	for !finished {
 		finished = <-channelWindow
@@ -352,6 +354,7 @@ func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn
 	}
 }
 
+/** change les variables de fonctionnement en cas de perte de paquets*/
 func handleLostPackets(transmitting *bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
 		_ = <-channelLoss
@@ -448,6 +451,7 @@ func handleACK(transmitting *bool, dataConn *net.UDPConn, dataAddr net.Addr, mut
 	return
 }
 
+/** s'occupe de créer le packet et de l'envoyer/renvoyer*/
 func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	ackChannel := make(chan int, 100)
 
@@ -478,7 +482,7 @@ func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelW
 			return
 		}
 
-		// envoie une demande de retransmission dans le futur, celle ci ne sera pas traitée si on recoit un 0 (ACK) ou un fast retransmit d'abord
+		// envoie une demande de retransmission dans le futur, celle ci ne sera pas traitée si on recoit un 0 (ACK) ou un (-1)fast retransmit d'abord
 		go func(ackChannel chan int, srtt *int, lastTimeInt int) {
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 			ackChannel <- lastTimeInt

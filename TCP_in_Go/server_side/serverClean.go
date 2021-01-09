@@ -7,17 +7,11 @@ import (
 	"io"
 	"net"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
-
-type doubleChannel struct {
-	ackChannel    chan int
-	windowChannel chan bool
-}
 
 func getArgs() (ipaddress string, portNumber int) {
 	if len(os.Args) != 3 {
@@ -166,26 +160,23 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	//toutes les channels de communication
 	channelWindowGlobal := make(chan bool, 100)
-	channelWindowNewPackets := make(chan bool, 100)
 	channelLoss := make(chan int, 100)
 	allACKChannel := make(chan int, 1000)
-	doubleChannels := &map[int]doubleChannel{}
-	retransmissionNeeded := []int{}
+	ackChannels := &map[int](chan int){}
 
 	//mutex de protection de la map ackChannels
 	var mutex = &sync.Mutex{}
-
-	// go routines d'écoute et de traitement d'ack/pertes
-	go listenACK(connected, dataConn, allACKChannel)
-	go handleACK(connected, mutex, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleLostPackets(connected, channelLoss, &retransmissionNeeded, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleWindowPriority(connected, doubleChannels, channelWindowGlobal, channelWindowNewPackets, &retransmissionNeeded)
 
 	//variables de lecture du fichier
 	bufferSize := 1494
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, bufferSize)
 	endOfFile := false
+
+	// go routines d'écoute et de traitement d'ack/pertes
+	go listenACK(connected, dataConn, allACKChannel)
+	go handleACK(connected, mutex, allACKChannel, ackChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
+	go handleLostPackets(connected, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 
 	//Reading the file
 	for !endOfFile {
@@ -199,8 +190,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		//on attend que la window permette d'envoyer un msg
-		_ = <-channelWindowNewPackets
-		go packetHandling(mutex, doubleChannels, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		_ = <-channelWindowGlobal
+		go packetHandling(mutex, ackChannels, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -212,7 +203,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
 	finished := false
 	for !finished {
-		finished = <-channelWindowNewPackets
+		finished = <-channelWindowGlobal
 	}
 
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
@@ -247,13 +238,9 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 }
 
 /** change les variables de fonctionnement en cas de perte de paquets*/
-func handleLostPackets(transmitting *bool, channelLoss chan int, retransmissionNeeded *[]int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
+func handleLostPackets(transmitting *bool, channelLoss chan int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
-		seqNum := <-channelLoss
-
-		//ajoute l'élément et trie la slice
-		*retransmissionNeeded = append(*retransmissionNeeded, seqNum)
-		sort.Ints(*retransmissionNeeded)
+		_ = <-channelLoss
 
 		// fast recovery
 		*CWND /= 2
@@ -262,24 +249,8 @@ func handleLostPackets(transmitting *bool, channelLoss chan int, retransmissionN
 	}
 }
 
-/** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
-func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, retransmissionNeeded *[]int) {
-	for *transmitting {
-		_ = <-channelWindowGlobal
-
-		if len(*retransmissionNeeded) == 0 {
-			channelWindowNewPackets <- true
-			fmt.Printf("SENDING NEW PACKET\n")
-		} else {
-			(*doubleChannels)[(*retransmissionNeeded)[0]].windowChannel <- true
-			fmt.Printf("RETRANSMITTING PACKET\n")
-			*retransmissionNeeded = (*retransmissionNeeded)[1:len(*retransmissionNeeded)]
-		}
-	}
-}
-
 /** traite tout ack reçu */
-func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) (err error) {
+func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan int), channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *bool) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0
@@ -307,11 +278,11 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				mutex.Lock()
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
-				for key, dB := range *doubleChannels {
+				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
-						dB.ackChannel <- 0
+						ackChannel <- 0
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
-						delete((*doubleChannels), key)
+						delete((*ackChannels), key)
 
 						for i := 0; i < 2; i++ {
 							channelWindowGlobal <- false
@@ -329,9 +300,9 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				mutex.Lock()
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
-				for key, dB := range *doubleChannels {
+				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
-						dB.ackChannel <- 0
+						ackChannel <- 0
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 						*numberOfACKInWindow++
 						channelWindowGlobal <- false
@@ -348,8 +319,9 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 			}
 
+			//pas bon ça, source de paquets supplémentaires parfois
 			//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
-			if len((*doubleChannels)) == 0 {
+			if *endOfFile && len((*ackChannels)) == 0 {
 				channelWindowGlobal <- true
 			}
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
@@ -357,7 +329,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
 
 			mutex.Lock()
-			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
+			(*ackChannels)[highestReceivedSeqNum+1] <- -1
 			mutex.Unlock()
 		}
 	}
@@ -365,12 +337,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 }
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
-func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan int, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	dB := doubleChannel{make(chan int, 100), make(chan bool, 100)}
+func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelLoss chan int, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	ackChannel := make(chan int, 100)
 
 	//création de la channel de communication
 	mutex.Lock()
-	(*doubleChannels)[seqNum] = dB
+	(*ackChannels)[seqNum] = ackChannel
 	mutex.Unlock()
 
 	//concaténation du numéro de séquence et du msg
@@ -401,16 +373,14 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 		go func(ackChannel chan int, srtt *int, lastTimeInt int) {
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
 			ackChannel <- lastTimeInt
-		}(dB.ackChannel, srtt, lastTimeInt)
+		}(ackChannel, srtt, lastTimeInt)
 
 		//on ne veut pas traiter une demande de retransmission faite par une go routine lancée avant de recevoir une demande de fast retransmit
 		for ack != 0 && ack != lastTimeInt {
-			ack = <-dB.ackChannel
+			ack = <-ackChannel
 
 			if ack == lastTimeInt {
 				channelLoss <- seqNum
-				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
-				_ = <-dB.windowChannel
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 			}
 		}

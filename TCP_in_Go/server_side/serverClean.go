@@ -273,7 +273,7 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 		} else {
 			(*doubleChannels)[(*retransmissionNeeded)[0]].windowChannel <- true
 			fmt.Printf("RETRANSMITTING PACKET\n")
-			*retransmissionNeeded = (*retransmissionNeeded)[1 : len(*retransmissionNeeded)-1]
+			*retransmissionNeeded = (*retransmissionNeeded)[1:len(*retransmissionNeeded)]
 		}
 	}
 }
@@ -409,7 +409,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 
 			if ack == lastTimeInt {
 				channelLoss <- seqNum
-				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " NEEDS TO BE RESENT\n")
+				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
 				_ = <-dB.windowChannel
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 			}

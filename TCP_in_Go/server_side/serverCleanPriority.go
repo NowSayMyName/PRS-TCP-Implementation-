@@ -387,6 +387,8 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 	}
 	msg := append([]byte(seq), content...)
 
+	fmt.Printf("PACKET " + strconv.Itoa(seqNum) + " CREATED\n")
+
 	//double channel succesfully created
 	channelPacketCreation <- true
 

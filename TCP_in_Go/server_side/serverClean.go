@@ -160,7 +160,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// variables de fonctionnement de transmission
 	ssthresh := 256
-	CWND := 1
+	CWND := 4
 	numberOfACKInWindow := 0
 	firstRTT = 20000
 

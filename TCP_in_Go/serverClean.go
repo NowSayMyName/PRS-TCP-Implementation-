@@ -170,7 +170,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelLoss := make(chan int, 100)
 	allACKChannel := make(chan int, 1000)
 	doubleChannels := &map[int]doubleChannel{}
-	retransmissionNeeded := []int{}
+	channelPacketCreation := make(chan bool)
+	packetsToBeSent := []int{}
 
 	//mutex de protection de la map ackChannels
 	var mutex = &sync.Mutex{}
@@ -184,8 +185,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
 	go handleACK(connected, mutex, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
-	go handleLostPackets(connected, channelLoss, &retransmissionNeeded, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleWindowPriority(connected, doubleChannels, channelWindowGlobal, channelWindowNewPackets, &retransmissionNeeded)
+	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
+	go handleWindowPriority(connected, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketCreation, &packetsToBeSent)
 
 	//Reading the file
 	for !endOfFile {
@@ -200,7 +201,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowNewPackets
-		go packetHandling(mutex, doubleChannels, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutex, doubleChannels, channelLoss, channelPacketCreation, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -247,13 +248,13 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 }
 
 /** change les variables de fonctionnement en cas de perte de paquets*/
-func handleLostPackets(transmitting *bool, channelLoss chan int, retransmissionNeeded *[]int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
+func handleLostPackets(transmitting *bool, channelLoss chan int, packetsToBeSent *[]int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
 		seqNum := <-channelLoss
 
 		//ajoute l'élément et trie la slice
-		*retransmissionNeeded = append(*retransmissionNeeded, seqNum)
-		sort.Ints(*retransmissionNeeded)
+		*packetsToBeSent = append(*packetsToBeSent, seqNum)
+		sort.Ints(*packetsToBeSent)
 
 		// fast recovery
 		*CWND /= 2
@@ -263,18 +264,20 @@ func handleLostPackets(transmitting *bool, channelLoss chan int, retransmissionN
 }
 
 /** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
-func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, retransmissionNeeded *[]int) {
+func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketCreation chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		msg := <-channelWindowGlobal
 
-		if len(*retransmissionNeeded) == 0 {
+		if len(*packetsToBeSent) == 0 {
 			channelWindowNewPackets <- msg
-			fmt.Printf("SENDING NEW PACKET\n")
-		} else {
-			(*doubleChannels)[(*retransmissionNeeded)[0]].windowChannel <- true
-			fmt.Printf("RETRANSMITTING PACKET\n")
-			*retransmissionNeeded = (*retransmissionNeeded)[1:len(*retransmissionNeeded)]
+			fmt.Printf("CREATING NEW PACKET\n")
+
+			//waiting for the creation of the go routine
+			_ = <-channelPacketCreation
 		}
+
+		(*doubleChannels)[(*packetsToBeSent)[0]].windowChannel <- true
+		*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
 	}
 }
 
@@ -368,7 +371,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 }
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
-func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan int, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan int, channelPacketCreation chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	dB := doubleChannel{make(chan int, 100), make(chan bool, 100)}
 
 	//création de la channel de communication
@@ -383,6 +386,12 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 		seq = "0" + seq
 	}
 	msg := append([]byte(seq), content...)
+
+	//double channel succesfully created
+	channelPacketCreation <- true
+
+	//waiting for autorisation to send
+	_ = <-dB.windowChannel
 
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 

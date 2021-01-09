@@ -163,17 +163,23 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 	defer f.Close()
 
+	ssthresh := 256
+	CWND := 1
+	numberOfACKInWindow := 0
+
 	channelWindow := make(chan bool, 100)
+	channelLoss := make(chan bool, 100)
 
 	// packets := map[int]*packet{}
 	allACKChannel := make(chan int, 1000)
-	ackChannels := &map[int]chan bool{}
+	ackChannels := &map[int]chan int{}
 	var mutex = &sync.Mutex{}
 
 	firstRTT = 20000
 	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
 	go listenACK(connected, allACKChannel, dataConn)
-	go handleACK(mutex, allACKChannel, ackChannels, dataConn, dataAddr, connected, 256, channelWindow)
+	go handleACK(connected, dataConn, dataAddr, mutex, allACKChannel, ackChannels, channelWindow, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
+	go handleLostPackets(connected, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 
 	bufferSize := 1494
 	r := bufio.NewReader(f)
@@ -192,11 +198,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		// _ = <-channelWindow
+		_ = <-channelWindow
 
 		// fmt.Printf(string(readingBuffer[:n]))
 		// go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
-		go packetHandling(mutex, ackChannels, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT, channelWindow)
+		go packetHandling(mutex, ackChannels, channelWindow, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		//append([]byte(nil), readingBuffer[:n]...)
 
@@ -327,6 +333,7 @@ func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataCo
 	}
 }*/
 
+/** fonction d'écoute sur le port de communication, transmet tout ack reçu à la fonction de traitement via une channel */
 func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn) {
 	transmissionBuffer := make([]byte, 9)
 
@@ -345,15 +352,24 @@ func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn
 	}
 }
 
-func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan bool), dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, ssthresh int, channelWindow chan bool) (err error) {
-	CWND := 1
-	numberOfACKInWindow := 0
+func handleLostPackets(transmitting *bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
+	for *transmitting {
+		_ = <-channelLoss
 
+		// fast recovery
+		*CWND /= 2
+		*ssthresh = *CWND
+		*numberOfACKInWindow = 0
+	}
+}
+
+/** traite tout ack reçu */
+func handleACK(transmitting *bool, dataConn *net.UDPConn, dataAddr net.Addr, mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0
 
-	for i := 0; i < CWND; i++ {
+	for i := 0; i < *CWND; i++ {
 		channelWindow <- true
 	}
 
@@ -370,13 +386,13 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {
-			if CWND < ssthresh {
+			if *CWND < *ssthresh {
 				mutex.Lock()
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
-						ackChannel <- true
+						ackChannel <- 0
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 						delete((*ackChannels), key)
 
@@ -384,8 +400,8 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 							channelWindow <- false
 						}
 
-						CWND++
-						numberOfACKInWindow++
+						*CWND++
+						*numberOfACKInWindow++
 						fmt.Printf("WINDOW SIZE : %d\n", CWND)
 					}
 				}
@@ -397,18 +413,19 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, ackChannel := range *ackChannels {
 					if key <= highestReceivedSeqNum {
-						ackChannel <- true
-						numberOfACKInWindow++
+						ackChannel <- 0
+						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						*numberOfACKInWindow++
 						channelWindow <- false
 					}
 				}
 
 				mutex.Unlock()
 
-				if numberOfACKInWindow >= CWND {
-					CWND++
+				if *numberOfACKInWindow >= *CWND {
+					*CWND++
 					channelWindow <- false
-					numberOfACKInWindow = 0
+					*numberOfACKInWindow = 0
 					fmt.Printf("WINDOW SIZE : %d\n", CWND)
 				}
 			}
@@ -421,22 +438,18 @@ func handleACK(mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](
 			fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
 
 			mutex.Lock()
-			if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
-				ackChannel <- false
-				// (*ackChannels)[highestReceivedSeqNum+1] <- false
-			}
+			// if ackChannel, ok := (*ackChannels)[highestReceivedSeqNum+1]; ok {
+			// 	ackChannel <- -1
+			// }
+			(*ackChannels)[highestReceivedSeqNum+1] <- -1
 			mutex.Unlock()
-
-			CWND /= 2
-			ssthresh = CWND
-			numberOfACKInWindow = 0
 		}
 	}
 	return
 }
 
-func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan bool), content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int, channelWindow chan bool) {
-	ackChannel := make(chan bool, 100)
+func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+	ackChannel := make(chan int, 100)
 
 	mutex.Lock()
 	(*ackChannels)[seqNum] = ackChannel
@@ -448,14 +461,16 @@ func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan bool), content
 		seq = "0" + seq
 	}
 	msg := append([]byte(seq), content...)
-	var lastTime time.Time
 
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
-	ack := false
-	for !ack {
-		_ = <-channelWindow
+
+	var lastTime time.Time
+	ack := -1
+
+	//Tant qu'on a pas reçu l'acquittement
+	for ack != 0 {
 		lastTime = time.Now()
-		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+		lastTimeInt := lastTime.Nanosecond()
 
 		_, err := dataConn.WriteTo(msg, dataAddr)
 		if err != nil {
@@ -463,13 +478,22 @@ func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan bool), content
 			return
 		}
 
-		go func(ackChannel chan bool, srtt *int) {
-			//cette méthode peut être à l'origine de retransmissions supplémentaires (si un ordre de fast retransmit a été reçu et que cette fonction fini avant de recevoir l'ACK)
+		// envoie une demande de retransmission dans le futur, celle ci ne sera pas traitée si on recoit un 0 (ACK) ou un fast retransmit d'abord
+		go func(ackChannel chan int, srtt *int, lastTimeInt int) {
 			time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
-			ackChannel <- false
-		}(ackChannel, srtt)
+			ackChannel <- lastTimeInt
+		}(ackChannel, srtt, lastTimeInt)
 
-		ack = <-ackChannel
+		//on ne veut pas traiter une demande de retransmission faite par une go routine lancée avant de recevoir une demande de fast retransmit
+		for ack != 0 && ack != lastTimeInt {
+			ack = <-ackChannel
+
+			if ack == lastTimeInt {
+				channelLoss <- true
+				_ = <-channelWindow
+				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+			}
+		}
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)

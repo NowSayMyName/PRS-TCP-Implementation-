@@ -344,7 +344,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 					*CWND++
 					channelWindowGlobal <- false
 					*numberOfACKInWindow = 0
-					fmt.Printf("WINDOW SIZE : %d\n", CWND)
+					fmt.Printf("WINDOW SIZE : %d\n", *CWND)
 				}
 			}
 
@@ -409,7 +409,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 
 			if ack == lastTimeInt {
 				channelLoss <- seqNum
-				fmt.Printf(strconv.Itoa(seqNum) + "NEEDS TO BE RESENT\n")
+				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " NEEDS TO BE RESENT\n")
 				_ = <-dB.windowChannel
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 			}

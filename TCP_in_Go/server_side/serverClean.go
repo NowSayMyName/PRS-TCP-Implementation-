@@ -381,10 +381,8 @@ func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelW
 	}
 
 	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
-	// if timeDiff > 10000000 {
-	// 	timeDiff = 10000000
-	// }
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
+
 	fmt.Printf("SRTT : %d\n", *srtt)
 	fmt.Printf("ENDING SEQNUM %d ROUTINE\n", seqNum)
 }

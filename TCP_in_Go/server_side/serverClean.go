@@ -189,6 +189,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
+		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindow
 		go packetHandling(mutex, ackChannels, channelWindow, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
@@ -227,6 +228,8 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 		}
 
 		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
+
+		//si le message est un ACK, on l'envoie se faire traiter
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
 			allACKChannel <- packetNum
@@ -252,6 +255,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 	highestReceivedSeqNum := 0
 	timesReceived := 0
 
+	//permet de lancer la fenêtre de départ
 	for i := 0; i < *CWND; i++ {
 		channelWindow <- true
 	}
@@ -269,6 +273,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {
+			//slow start
 			if *CWND < *ssthresh {
 				mutex.Lock()
 
@@ -290,6 +295,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 				}
 
 				mutex.Unlock()
+				//congestion avoidance
 			} else {
 				mutex.Lock()
 
@@ -313,6 +319,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 				}
 			}
 
+			//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
 			if len((*ackChannels)) == 0 {
 				channelWindow <- true
 			}
@@ -335,10 +342,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ac
 func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	ackChannel := make(chan int, 100)
 
+	//création de la channel de communication
 	mutex.Lock()
 	(*ackChannels)[seqNum] = ackChannel
 	mutex.Unlock()
 
+	//concaténation du numéro de séquence et du msg
 	seq := strconv.Itoa(seqNum)
 	zeros := 6 - len(seq)
 	for i := 0; i < zeros; i++ {

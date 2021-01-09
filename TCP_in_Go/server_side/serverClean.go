@@ -13,17 +13,6 @@ import (
 	"time"
 )
 
-type packet struct {
-	content  []byte
-	timeSent time.Time
-}
-
-type safeSRTT struct {
-	// https://bbengfort.github.io/snippets/2017/02/21/synchronizing-structs.html
-	sync.Mutex
-	SRTT int
-}
-
 func getArgs() (ipaddress string, portNumber int) {
 	if len(os.Args) != 3 {
 		fmt.Printf("Usage: go run serverClean.go <server_address> <port_number>\n")
@@ -178,9 +167,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	//mutex de protection de la map ackChannels
 	var mutex = &sync.Mutex{}
 
-	// go listenACKGlobal(&packets, dataConn, dataAddr, connected, channelWindow, &firstRTT)
-	go listenACK(connected, allACKChannel, dataConn)
-	go handleACK(connected, dataConn, dataAddr, mutex, allACKChannel, ackChannels, channelWindow, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
+	// go routines d'écoute et de traitement d'ack/pertes
+	go listenACK(connected, dataConn, allACKChannel)
+	go handleACK(connected, mutex, allACKChannel, ackChannels, channelWindow, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 	go handleLostPackets(connected, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 
 	//variables de lecture du fichier
@@ -201,12 +190,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		}
 
 		_ = <-channelWindow
-
-		// fmt.Printf(string(readingBuffer[:n]))
-		// go packetHandling(&packets, &packet{content: readingBuffer[:n]}, seqNum, dataConn, dataAddr, &firstRTT)
 		go packetHandling(mutex, ackChannels, channelWindow, channelLoss, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
-
-		//append([]byte(nil), readingBuffer[:n]...)
 
 		seqNum++
 		if seqNum == 1000000 {
@@ -231,112 +215,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	return
 }
 
-/*
-func sendPacket(buffer []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr) (err error) {
-	//Sending fragment
-	seq := strconv.Itoa(seqNum)
-	// fmt.Printf("Sequence number: %d\n", seqNum)
-	zeros := 6 - len(seq)
-	for i := 0; i < zeros; i++ {
-		seq = "0" + seq
-	}
-	// fmt.Println(string(buffer[0:n]))
-	msg := append([]byte(seq), buffer...)
-
-	_, err = dataConn.WriteTo(msg, dataAddr)
-	if err != nil {
-		fmt.Printf("Error sending packet %v\n", err)
-		return err
-	}
-	return
-}
-
-func listenACKGlobal(packets *map[int]*packet, dataConn *net.UDPConn, dataAddr net.Addr, transmitting *bool, channelWindow chan bool, srtt *int) (err error) {
-	transmissionBuffer := make([]byte, 9)
-	windowSize := 0
-
-	//fast retransmit variables
-	highestReceivedSeqNum := 0
-	timesReceived := 0
-
-	channelWindow <- true
-	for *transmitting {
-		_, err = dataConn.Read(transmissionBuffer)
-		if err != nil {
-			fmt.Printf("Error reading packets %v\n", err)
-			return err
-		}
-		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
-		if string(transmissionBuffer[0:3]) == "ACK" {
-			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
-
-			//test for fast retransmit
-			if highestReceivedSeqNum == packetNum {
-				timesReceived++
-			} else {
-				highestReceivedSeqNum = packetNum
-				timesReceived = 1
-			}
-
-			//check si l'acquittement n'a pas déjà été reçu
-			if timesReceived == 1 {
-				for key := range *packets {
-					if key <= packetNum {
-						timeDiff := int(time.Now().Sub((*packets)[key].timeSent) / time.Microsecond)
-						if timeDiff > 10000000 {
-							timeDiff = 10000000
-						}
-
-						// fmt.Printf("TIME DIFF : " + strconv.Itoa(timeDiff) + "\n")
-
-						*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
-						fmt.Printf("SRTT : " + strconv.Itoa(*srtt) + "\n")
-
-						delete(*packets, key)
-						for i := 0; i < 2; i++ {
-							channelWindow <- false
-						}
-						if len(*packets) == 0 {
-							channelWindow <- true
-						}
-						windowSize++
-						fmt.Printf("WINDOW SIZE : %d\n", windowSize)
-					} else {
-						break
-					}
-				}
-				// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
-			} else if timesReceived == 3 {
-				if lostPacket, ok := (*packets)[highestReceivedSeqNum+1]; ok {
-					fmt.Printf("FAST RETRANSMIT\n")
-					go packetHandling(packets, lostPacket, highestReceivedSeqNum+1, dataConn, dataAddr, srtt)
-				}
-			}
-		}
-	}
-	return
-}
-
-func packetHandling(packets *map[int]*packet, buffer *packet, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + ":\n")
-	// fmt.Printf(string(buffer))
-
-	for {
-		lastTime := time.Now()
-		buffer.timeSent = lastTime
-		(*packets)[seqNum] = buffer
-		go sendPacket(buffer.content, seqNum, dataConn, dataAddr)
-		time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
-		//si le paquet a déjà été acquitté (n'est plus dans le tableau) ou qu'une autre go routine le retransmet déjà (fast retransmit)
-		if _, ok := (*packets)[seqNum]; !ok || (*packets)[seqNum].timeSent != lastTime {
-			break
-		}
-		fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
-	}
-}*/
-
 /** fonction d'écoute sur le port de communication, transmet tout ack reçu à la fonction de traitement via une channel */
-func listenACK(transmitting *bool, allACKChannel chan int, dataConn *net.UDPConn) {
+func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int) {
 	transmissionBuffer := make([]byte, 9)
 
 	for *transmitting {
@@ -367,7 +247,7 @@ func handleLostPackets(transmitting *bool, channelLoss chan bool, ssthresh *int,
 }
 
 /** traite tout ack reçu */
-func handleACK(transmitting *bool, dataConn *net.UDPConn, dataAddr net.Addr, mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) (err error) {
+func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, ackChannels *map[int](chan int), channelWindow chan bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0

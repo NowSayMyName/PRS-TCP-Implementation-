@@ -177,7 +177,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	var mutex = &sync.Mutex{}
 
 	//variables de lecture du fichier
-	bufferSize := 1494
+	bufferSize := 2494
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, bufferSize)
 	endOfFile := false

@@ -279,10 +279,17 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 			channelWindowNewPackets <- msg
 			fmt.Printf("CREATING NEW PACKET\n")
 		}
-		_ = <-channelPacketsAvailable
 
-		(*doubleChannels)[(*packetsToBeSent)[0]].windowChannel <- true
-		*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+		for {
+			_ = <-channelPacketsAvailable
+			if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
+				doubleChannel.windowChannel <- true
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				break
+			} else {
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+			}
+		}
 	}
 }
 
@@ -358,7 +365,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 			}
 
-			//pas bon ça, source de paquets supplémentaires parfois
 			//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
 			if *endOfFile && len(*doubleChannels) == 0 {
 				channelWindowGlobal <- true

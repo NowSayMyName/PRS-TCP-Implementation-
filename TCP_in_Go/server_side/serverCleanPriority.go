@@ -269,6 +269,8 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 		*packetsToBeSent = append(*packetsToBeSent, seqNum)
 		sort.Ints(*packetsToBeSent)
 
+		fmt.Printf("PRIORITY QUEUE : %v\n", *packetsToBeSent)
+
 		go func() { channelPacketsAvailable <- true }()
 	}
 }
@@ -328,7 +330,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				for key, dB := range *doubleChannels {
 					if key <= highestReceivedSeqNum {
 						dB.ackChannel <- 0
-						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						// fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 						delete((*doubleChannels), key)
 
 						channelWindowGlobal <- false
@@ -348,7 +350,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				for key, dB := range *doubleChannels {
 					if key <= highestReceivedSeqNum {
 						dB.ackChannel <- 0
-						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						// fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 						delete((*doubleChannels), key)
 
 						*numberOfACKInWindow++
@@ -442,5 +444,5 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
 
 	fmt.Printf("SRTT : %d\n", *srtt)
-	fmt.Printf("ENDING SEQNUM %d ROUTINE\n", seqNum)
+	// fmt.Printf("ENDING SEQNUM %d ROUTINE\n", seqNum)
 }

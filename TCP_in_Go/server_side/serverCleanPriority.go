@@ -175,7 +175,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	packetsToBeSent := []int{}
 
 	//mutex de protection de la map ackChannels
-	var mutex = &sync.Mutex{}
+	var mutexChannels = &sync.Mutex{}
+	var mutexPackets = &sync.Mutex{}
 
 	//variables de lecture du fichier
 	bufferSize := 1494
@@ -185,10 +186,10 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
-	go handleACK(connected, mutex, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
+	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
 	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleWindowPriority(connected, mutex, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
-	go handleSendRequests(connected, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
+	go handleWindowPriority(connected, mutexChannels, mutexPackets, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
+	go handleSendRequests(connected, mutexPackets, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
 
 	//Reading the file
 	for !endOfFile {
@@ -203,7 +204,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowNewPackets
-		go packetHandling(mutex, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutexChannels, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
 		// time.Sleep(time.Duration(500) * time.Millisecond)
@@ -270,13 +271,15 @@ func contains(slice []int, element int) bool {
 	return false
 }
 
-func handleSendRequests(transmitting *bool, channelSendRequests chan int, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
+func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSendRequests chan int, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		seqNum := <-channelSendRequests
 
 		fmt.Printf("%d WANTS TO BE SENT\n", seqNum)
 
 		//ajoute l'élément s'il n'est pas déjà dedans et trie la slice
+		mutexPackets.Lock()
+
 		if !contains(*packetsToBeSent, seqNum) {
 			*packetsToBeSent = append(*packetsToBeSent, seqNum)
 			sort.Ints(*packetsToBeSent)
@@ -288,11 +291,13 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 		} else {
 			fmt.Printf("SEQNUM %d REJECTED IN PRIORITY QUEUE\n", seqNum)
 		}
+		mutexPackets.Unlock()
+
 	}
 }
 
 /** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
-func handleWindowPriority(transmitting *bool, mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
+func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPackets *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
 		msg := <-channelWindowGlobal
@@ -308,9 +313,11 @@ func handleWindowPriority(transmitting *bool, mutex *sync.Mutex, doubleChannels 
 			_ = <-channelPacketsAvailable
 			fmt.Printf("PROCESSING SEND REQUEST\n")
 
-			mutex.Lock()
+			mutexPackets.Lock()
+
+			mutexChannels.Lock()
 			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
-			mutex.Unlock()
+			mutexChannels.Unlock()
 
 			if ok {
 				fmt.Printf("ACCEPTING SEND REQUEST\n")
@@ -327,6 +334,8 @@ func handleWindowPriority(transmitting *bool, mutex *sync.Mutex, doubleChannels 
 					fmt.Printf("CREATING NEW PACKET\n")
 				}
 			}
+			mutexPackets.Unlock()
+
 		}
 	}
 }

@@ -137,7 +137,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, firstRTT int) (err error) {
-	seqNum := 1
+	seqNum := 0
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -182,7 +182,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	bufferSize := 1494
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, bufferSize)
-	endOfFile := false
+	endOfFile := -1
 
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
@@ -192,11 +192,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	go handleSendRequests(connected, mutexPackets, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
 
 	//Reading the file
-	for !endOfFile {
+	for endOfFile == -1 {
+		seqNum++
+
 		n, err := io.ReadFull(r, readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			fmt.Printf("REACHED EOF\n")
-			endOfFile = true
+			endOfFile = seqNum
 		} else if err != nil {
 			fmt.Println("Error reading file:", err)
 			return err
@@ -205,9 +207,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowNewPackets
 		go packetHandling(mutexChannels, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
-
-		seqNum++
-		// time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
@@ -350,7 +349,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 }
 
 /** traite tout ack reçu */
-func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *bool) (err error) {
+func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *int) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0
@@ -429,11 +428,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 					}()
 				}
 			}
-
-			//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
-			if *endOfFile && len(*doubleChannels) == 0 {
-				channelWindowGlobal <- true
-			}
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
 			mutex.Lock()
@@ -442,6 +436,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 		}
 
 		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
+	}
+	//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
+	if *endOfFile == highestReceivedSeqNum {
+		channelWindowGlobal <- true
 	}
 	return
 }

@@ -356,6 +356,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 
 	var lastTime time.Time
 	for {
+		fmt.Printf("SENDING SEQNUM : %d", seqNum)
 		lastTime = time.Now()
 
 		_, err := dataConn.WriteTo(msg, dataAddr)

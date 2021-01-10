@@ -279,7 +279,7 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 
 		//ajoute l'élément s'il n'est pas déjà dedans et trie la slice
 		mutexPackets.Lock()
-		fmt.Printf("SEND REQUEST LOCKING MUTEX PACKET")
+		fmt.Printf("SEND REQUEST LOCKING MUTEX PACKET\n")
 
 		if !contains(*packetsToBeSent, seqNum) {
 			*packetsToBeSent = append(*packetsToBeSent, seqNum)
@@ -293,7 +293,7 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 			fmt.Printf("SEQNUM %d REJECTED IN PRIORITY QUEUE\n", seqNum)
 		}
 		mutexPackets.Unlock()
-		fmt.Printf("SEND REQUEST UNLOCKING MUTEX PACKET")
+		fmt.Printf("SEND REQUEST UNLOCKING MUTEX PACKET\n")
 
 	}
 }
@@ -306,14 +306,14 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 		fmt.Printf("WINDOW DISPONIBILITY FOUND\n")
 
 		mutexPackets.Lock()
-		fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET")
+		fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET\n")
 
 		if len(*packetsToBeSent) == 0 {
 			channelWindowNewPackets <- msg
 			fmt.Printf("CREATING NEW PACKET\n")
 		}
 		mutexPackets.Unlock()
-		fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET")
+		fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 
 		for {
 			fmt.Printf("WAITING FOR SEND REQUESTS\n")
@@ -321,7 +321,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 			fmt.Printf("PROCESSING SEND REQUEST\n")
 
 			mutexPackets.Lock()
-			fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET")
+			fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
 
 			mutexChannels.Lock()
 			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
@@ -343,7 +343,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 				}
 			}
 			mutexPackets.Unlock()
-			fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET")
+			fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 
 		}
 	}

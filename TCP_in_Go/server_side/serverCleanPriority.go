@@ -187,7 +187,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	go listenACK(connected, dataConn, allACKChannel)
 	go handleACK(connected, mutex, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
 	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleWindowPriority(connected, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
+	go handleWindowPriority(connected, mutex, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
 	go handleSendRequests(connected, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
 
 	//Reading the file
@@ -292,7 +292,7 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 }
 
 /** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
-func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
+func handleWindowPriority(transmitting *bool, mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
 		msg := <-channelWindowGlobal
@@ -307,7 +307,12 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 			fmt.Printf("WAITING FOR SEND REQUESTS\n")
 			_ = <-channelPacketsAvailable
 			fmt.Printf("PROCESSING SEND REQUEST\n")
-			if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
+
+			mutex.Lock()
+			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
+			mutex.Unlock()
+
+			if ok {
 				doubleChannel.windowChannel <- true
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
 				fmt.Printf("SEND REQUEST ACCEPTED\n")

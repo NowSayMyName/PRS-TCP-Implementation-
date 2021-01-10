@@ -407,9 +407,9 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 	//Tant qu'on a pas reçu l'acquittement
 	for ack != 0 {
 		//waiting for autorisation to send
-		fmt.Printf("REQUESTING BEING SENT\n")
+		fmt.Printf("SEQNUM %d REQUESTING BEING SENT\n", seqNum)
 		channelSendRequests <- seqNum
-		fmt.Printf("WAITING FOR AUTHORISATION\n")
+		fmt.Printf("SEQNUM %d WAITING FOR AUTHORISATION\n", seqNum)
 		_ = <-dB.windowChannel
 
 		lastTime = time.Now()

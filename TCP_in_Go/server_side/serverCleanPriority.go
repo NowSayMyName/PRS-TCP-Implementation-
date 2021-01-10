@@ -259,19 +259,35 @@ func handleLostPackets(transmitting *bool, channelLoss chan bool, packetsToBeSen
 	}
 }
 
+func contains(slice []int, element int) bool {
+	for _, a := range slice {
+		if a == element {
+			return true
+		} else if a > element {
+			return false
+		}
+	}
+	return false
+}
+
 func handleSendRequests(transmitting *bool, channelSendRequests chan int, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		seqNum := <-channelSendRequests
 
 		fmt.Printf("%d WANTS TO BE SENT\n", seqNum)
 
-		//ajoute l'élément et trie la slice
-		*packetsToBeSent = append(*packetsToBeSent, seqNum)
-		sort.Ints(*packetsToBeSent)
+		//ajoute l'élément s'il n'est pas déjà dedans et trie la slice
+		if !contains(*packetsToBeSent, seqNum) {
+			*packetsToBeSent = append(*packetsToBeSent, seqNum)
+			sort.Ints(*packetsToBeSent)
 
-		fmt.Printf("PRIORITY QUEUE : %v\n", *packetsToBeSent)
+			fmt.Printf("SEQNUM %d ADDED IN PRIORITY QUEUE\n", seqNum)
+			fmt.Printf("PRIORITY QUEUE : %v\n", *packetsToBeSent)
 
-		go func() { channelPacketsAvailable <- true }()
+			go func() { channelPacketsAvailable <- true }()
+		} else {
+			fmt.Printf("SEQNUM %d REJECTED IN PRIORITY QUEUE\n", seqNum)
+		}
 	}
 }
 

@@ -331,9 +331,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 						delete((*doubleChannels), key)
 
-						for i := 0; i < 2; i++ {
-							channelWindowGlobal <- false
-						}
+						channelWindowGlobal <- false
 
 						*CWND++
 						*numberOfACKInWindow++
@@ -354,7 +352,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 						delete((*doubleChannels), key)
 
 						*numberOfACKInWindow++
-						channelWindowGlobal <- false
 					}
 				}
 

@@ -356,7 +356,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 
 	//permet de lancer la fenêtre de départ
 	for i := 0; i < *CWND; i++ {
-		channelWindowGlobal <- true
+		channelWindowGlobal <- false
 	}
 
 	for *transmitting {

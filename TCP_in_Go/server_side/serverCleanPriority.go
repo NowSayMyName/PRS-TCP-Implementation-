@@ -283,10 +283,11 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 
 			fmt.Printf("SEQNUM %d ADDED IN PRIORITY QUEUE\n", seqNum)
 			fmt.Printf("PRIORITY QUEUE : %v\n", *packetsToBeSent)
+
+			go func() { channelPacketsAvailable <- true }()
 		} else {
 			fmt.Printf("SEQNUM %d REJECTED IN PRIORITY QUEUE\n", seqNum)
 		}
-		go func() { channelPacketsAvailable <- true }()
 	}
 }
 
@@ -312,6 +313,7 @@ func handleWindowPriority(transmitting *bool, mutex *sync.Mutex, doubleChannels 
 			mutex.Unlock()
 
 			if ok {
+				fmt.Printf("ACCEPTING SEND REQUEST\n")
 				doubleChannel.windowChannel <- true
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
 				fmt.Printf("SEND REQUEST ACCEPTED\n")

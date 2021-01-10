@@ -209,6 +209,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		go packetHandling(mutexChannels, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 	}
 
+	fmt.Printf("LAST SEQNUM : %d", endOfFile)
+	endOfFile = seqNum
+
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
 	finished := false
 	for !finished {
@@ -304,41 +307,46 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 		msg := <-channelWindowGlobal
 		fmt.Printf("WINDOW DISPONIBILITY FOUND\n")
 
-		for {
-			mutexPackets.Lock()
-			if len(*packetsToBeSent) == 0 {
-				channelWindowNewPackets <- msg
-				fmt.Printf("CREATING NEW PACKET\n")
-			}
-			mutexPackets.Unlock()
+		if !msg {
+			for {
+				mutexPackets.Lock()
+				if len(*packetsToBeSent) == 0 {
+					channelWindowNewPackets <- msg
+					fmt.Printf("CREATING NEW PACKET\n")
+				}
+				mutexPackets.Unlock()
 
-			fmt.Printf("WAITING FOR SEND REQUESTS\n")
-			_ = <-channelPacketsAvailable
-			fmt.Printf("PROCESSING SEND REQUEST\n")
+				fmt.Printf("WAITING FOR SEND REQUESTS\n")
+				_ = <-channelPacketsAvailable
+				fmt.Printf("PROCESSING SEND REQUEST\n")
 
-			// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
+				// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
 
-			mutexChannels.Lock()
-			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
-			mutexChannels.Unlock()
+				mutexChannels.Lock()
+				doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
+				mutexChannels.Unlock()
 
-			mutexPackets.Lock()
-			if ok {
-				fmt.Printf("ACCEPTING SEND REQUEST\n")
-				doubleChannel.windowChannel <- true
-				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-				fmt.Printf("SEND REQUEST ACCEPTED\n")
+				mutexPackets.Lock()
+				if ok {
+					fmt.Printf("ACCEPTING SEND REQUEST\n")
+					doubleChannel.windowChannel <- true
+					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+					fmt.Printf("SEND REQUEST ACCEPTED\n")
 
+					mutexPackets.Unlock()
+					// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
+					break
+				} else {
+					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+					fmt.Printf("SEND REQUEST REJECTED\n")
+
+				}
 				mutexPackets.Unlock()
 				// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
-				break
-			} else {
-				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-				fmt.Printf("SEND REQUEST REJECTED\n")
-
 			}
-			mutexPackets.Unlock()
-			// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
+		} else {
+			fmt.Printf("CAN SEND EOF\n")
+			channelWindowNewPackets <- true
 		}
 	}
 }

@@ -254,9 +254,9 @@ func handleLostPackets(transmitting *bool, channelLoss chan int, ssthresh *int, 
 		_ = <-channelLoss
 
 		// fast recovery
-		*CWND /= 2
-		*ssthresh = *CWND
-		*numberOfACKInWindow = 0
+		// *CWND /= 2
+		// *ssthresh = *CWND
+		// *numberOfACKInWindow = 0
 	}
 }
 

@@ -286,7 +286,6 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 			fmt.Printf("CREATING NEW PACKET\n")
 		}
 
-		// go func() {
 		for {
 			fmt.Printf("WAITING FOR SEND REQUESTS\n")
 			_ = <-channelPacketsAvailable
@@ -301,7 +300,39 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 				fmt.Printf("SEND REQUEST REJECTED\n")
 			}
 		}
-		// }()
+	}
+}
+
+/** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
+func handleWindowPriority2(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
+	for *transmitting {
+		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
+		msg := <-channelWindowGlobal
+
+		if len(*packetsToBeSent) == 0 {
+			channelWindowNewPackets <- msg
+			fmt.Printf("CREATING NEW PACKET\n")
+		}
+
+		for {
+			fmt.Printf("WAITING FOR SEND REQUESTS\n")
+			_ = <-channelPacketsAvailable
+			fmt.Printf("PROCESSING SEND REQUEST\n")
+			if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
+				doubleChannel.windowChannel <- true
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				fmt.Printf("SEND REQUEST ACCEPTED\n")
+				break
+			} else {
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				fmt.Printf("SEND REQUEST REJECTED\n")
+
+				if len(*packetsToBeSent) == 0 {
+					channelWindowNewPackets <- msg
+					fmt.Printf("CREATING NEW PACKET\n")
+				}
+			}
+		}
 	}
 }
 

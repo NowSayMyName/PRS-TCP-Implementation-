@@ -188,7 +188,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	go listenACK(connected, dataConn, allACKChannel)
 	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
 	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
-	go handleWindowPriority(connected, mutexChannels, mutexPackets, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent, &endOfFile)
+	go handleWindowPriority(connected, mutexChannels, mutexPackets, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
 	go handleSendRequests(connected, mutexPackets, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
 
 	//Reading the file
@@ -299,35 +299,32 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 }
 
 /** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
-func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPackets *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int, endOfFile *bool) {
+func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPackets *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
 		msg := <-channelWindowGlobal
 		fmt.Printf("WINDOW DISPONIBILITY FOUND\n")
 
-		mutexPackets.Lock()
-		// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET\n")
-
-		if len(*packetsToBeSent) == 0 {
-			channelWindowNewPackets <- msg
-			fmt.Printf("CREATING NEW PACKET\n")
-		}
-		mutexPackets.Unlock()
-		// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
-
-		if !*endOfFile {
+		if !msg {
 			for {
+				mutexPackets.Lock()
+				if len(*packetsToBeSent) == 0 {
+					channelWindowNewPackets <- msg
+					fmt.Printf("CREATING NEW PACKET\n")
+				}
+				mutexPackets.Unlock()
+
 				fmt.Printf("WAITING FOR SEND REQUESTS\n")
 				_ = <-channelPacketsAvailable
 				fmt.Printf("PROCESSING SEND REQUEST\n")
 
-				mutexPackets.Lock()
 				// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
 
 				mutexChannels.Lock()
 				doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
 				mutexChannels.Unlock()
 
+				mutexPackets.Lock()
 				if ok {
 					fmt.Printf("ACCEPTING SEND REQUEST\n")
 					doubleChannel.windowChannel <- true
@@ -341,15 +338,12 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
 					fmt.Printf("SEND REQUEST REJECTED\n")
 
-					if len(*packetsToBeSent) == 0 {
-						channelWindowNewPackets <- msg
-						fmt.Printf("CREATING NEW PACKET\n")
-					}
 				}
 				mutexPackets.Unlock()
 				// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
-
 			}
+		} else {
+			channelWindowNewPackets <- true
 		}
 	}
 }

@@ -236,8 +236,6 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 			return
 		}
 
-		fmt.Printf("RECEIVED : " + string(transmissionBuffer) + "\n")
-
 		//si le message est un ACK, on l'envoie se faire traiter
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
@@ -324,17 +322,17 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 
 			mutexPackets.Lock()
 			if ok {
-				fmt.Printf("ACCEPTING SEND REQUEST\n")
+				fmt.Printf("ACCEPTING SEND REQUEST FROM %d\n", (*packetsToBeSent)[0])
 				doubleChannel.windowChannel <- true
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-				fmt.Printf("SEND REQUEST ACCEPTED\n")
+				fmt.Printf("SEND REQUEST FROM %d ACCEPTED\n", (*packetsToBeSent)[0])
 
 				mutexPackets.Unlock()
 				// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 				break
 			} else {
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-				fmt.Printf("SEND REQUEST REJECTED\n")
+				fmt.Printf("SEND REQUEST FROM %d REJECTED\n", (*packetsToBeSent)[0])
 
 			}
 			mutexPackets.Unlock()

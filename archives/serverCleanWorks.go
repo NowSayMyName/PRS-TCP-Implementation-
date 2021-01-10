@@ -150,8 +150,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	if err != nil {
 		return err
 	}
-	fileSize := info.Size()
-	fmt.Printf("FILE SIZE : %v\n", fileSize)
+	fileSize := float32(info.Size())/float32(1000000)
 
 	f, err := os.Open(finalPath)
 	if err != nil {
@@ -220,11 +219,11 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		return
 	}
 
-	executionTime := int(time.Now().Sub(executionTimeStart) / time.Second)
+	executionTime := float32(time.Now().Sub(executionTimeStart) / time.Second)
 	fmt.Printf("SENT %s\n", path)
-	fmt.Printf(">>>TIME :  %v\n s", float32(executionTime))
-	fmt.Printf(">>>FILE SIZE :  %v\n Mo", float32(fileSize/1000000))
-	fmt.Printf(">>>FLOW RATE :  %v\n Mo/s", float32(fileSize/1000000)/float32(executionTime))
+	fmt.Printf(">>>TIME :  %v s\n ", executionTime))
+	fmt.Printf(">>>FILE SIZE :  %v Mo\n ",fileSize)
+	fmt.Printf(">>>FLOW RATE :  %v Mo/s\n ", fileSize/executionTime))
 	return
 }
 

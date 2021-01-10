@@ -411,7 +411,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 	fmt.Printf("SENDING : " + strconv.Itoa(seqNum) + "\n")
 
 	var lastTime time.Time
-	ack := -2
+	ack := -1
 
 	//Tant qu'on a pas reçu l'acquittement
 	for ack != 0 {
@@ -437,15 +437,18 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 		}(dB.ackChannel, srtt, lastTimeInt)
 
 		//on ne veut pas traiter une demande de retransmission faite par une go routine lancée avant de recevoir une demande de fast retransmit
-		for ack != -1 && ack != lastTimeInt {
+		for {
 			ack = <-dB.ackChannel
 
-			if ack == lastTimeInt || ack == -1 {
+			if ack == 0 {
+				break
+			} else if ack == lastTimeInt || ack == -1 {
 				channelLoss <- true
 				channelWindowGlobal <- false
 
-				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
+				// fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+				break
 			}
 		}
 	}

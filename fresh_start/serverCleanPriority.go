@@ -389,10 +389,6 @@ func createPacket(seqNum int, content []byte) []byte {
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
 func packetHandling(mutex *sync.Mutex, channelLoss chan bool, channelSendRequests chan int, channelWindowGlobal chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-
-	var lastTime time.Time
-	ack := -1
-
 	//Tant qu'on a pas reçu l'acquittement
 	for ack != 0 {
 		//waiting for autorisation to send

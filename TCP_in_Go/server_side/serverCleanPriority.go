@@ -173,6 +173,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelSendRequests := make(chan int, 100)
 	channelPacketsAvailable := make(chan bool, 100)
 	packetsToBeSent := []int{}
+	channelEndOfFile := make(chan bool)
 
 	//mutex de protection de la map ackChannels
 	var mutexChannels = &sync.Mutex{}
@@ -187,7 +188,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
-	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &lastSeqNum)
+	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &lastSeqNum, channelEndOfFile)
 	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
 	go handleWindowPriority(connected, mutexChannels, mutexPackets, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
 	go handleSendRequests(connected, mutexPackets, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
@@ -212,12 +213,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	lastSeqNum = seqNum
 	fmt.Printf("LAST SEQNUM : %d\n", lastSeqNum)
-
-	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
-	finished := false
-	for !finished {
-		finished = <-channelWindowNewPackets
-	}
+	_ = <-channelEndOfFile
 
 	_, err = dataConn.WriteTo([]byte("FIN"), dataAddr)
 	if err != nil {
@@ -305,55 +301,50 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPackets *sync.Mutex, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
-		msg := <-channelWindowGlobal
+		_ = <-channelWindowGlobal
 		fmt.Printf("WINDOW DISPONIBILITY FOUND\n")
 
-		if !msg {
-			for {
-				mutexPackets.Lock()
-				if len(*packetsToBeSent) == 0 {
-					channelWindowNewPackets <- msg
-					fmt.Printf("CREATING NEW PACKET\n")
-				}
-				mutexPackets.Unlock()
+		for {
+			mutexPackets.Lock()
+			if len(*packetsToBeSent) == 0 {
+				channelWindowNewPackets <- true
+				fmt.Printf("CREATING NEW PACKET\n")
+			}
+			mutexPackets.Unlock()
 
-				fmt.Printf("WAITING FOR SEND REQUESTS\n")
-				_ = <-channelPacketsAvailable
-				fmt.Printf("PROCESSING SEND REQUEST\n")
+			fmt.Printf("WAITING FOR SEND REQUESTS\n")
+			_ = <-channelPacketsAvailable
+			fmt.Printf("PROCESSING SEND REQUEST\n")
 
-				// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
+			// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
 
-				mutexChannels.Lock()
-				doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
-				mutexChannels.Unlock()
+			mutexChannels.Lock()
+			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
+			mutexChannels.Unlock()
 
-				mutexPackets.Lock()
-				if ok {
-					fmt.Printf("ACCEPTING SEND REQUEST\n")
-					doubleChannel.windowChannel <- true
-					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-					fmt.Printf("SEND REQUEST ACCEPTED\n")
+			mutexPackets.Lock()
+			if ok {
+				fmt.Printf("ACCEPTING SEND REQUEST\n")
+				doubleChannel.windowChannel <- true
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				fmt.Printf("SEND REQUEST ACCEPTED\n")
 
-					mutexPackets.Unlock()
-					// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
-					break
-				} else {
-					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-					fmt.Printf("SEND REQUEST REJECTED\n")
-
-				}
 				mutexPackets.Unlock()
 				// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
+				break
+			} else {
+				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				fmt.Printf("SEND REQUEST REJECTED\n")
+
 			}
-		} else {
-			fmt.Printf("CAN SEND EOF\n")
-			channelWindowNewPackets <- true
+			mutexPackets.Unlock()
+			// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 		}
 	}
 }
 
 /** traite tout ack reçu */
-func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *int) (err error) {
+func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *int, channelEndOfFile chan bool) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0
@@ -441,7 +432,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 
 		if *endOfFile == highestReceivedSeqNum {
 			fmt.Printf("ALL PACKETS HAVE BEEN RECEIVED\n")
-			channelWindowGlobal <- true
+			channelEndOfFile <- true
 		}
 
 		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)

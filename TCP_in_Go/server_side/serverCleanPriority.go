@@ -285,16 +285,18 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 			fmt.Printf("CREATING NEW PACKET\n")
 		}
 
-		for {
-			_ = <-channelPacketsAvailable
-			if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
-				doubleChannel.windowChannel <- true
-				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-				break
-			} else {
-				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+		go func() {
+			for {
+				_ = <-channelPacketsAvailable
+				if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
+					doubleChannel.windowChannel <- true
+					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+					break
+				} else {
+					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+				}
 			}
-		}
+		}()
 	}
 }
 
@@ -319,6 +321,8 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			highestReceivedSeqNum = packetNum
 			timesReceived = 1
 		}
+
+		fmt.Printf("PROCESSING SEQNUM : %d", highestReceivedSeqNum)
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {

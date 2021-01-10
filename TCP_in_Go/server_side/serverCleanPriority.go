@@ -280,6 +280,7 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 	for *transmitting {
 		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
 		msg := <-channelWindowGlobal
+		fmt.Printf("WINDOW DISPONIBILITY FOUND")
 
 		if len(*packetsToBeSent) == 0 {
 			channelWindowNewPackets <- msg

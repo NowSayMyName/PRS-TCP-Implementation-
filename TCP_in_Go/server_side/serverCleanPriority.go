@@ -428,6 +428,8 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan bool, channelSendRequests chan int, channelWindowGlobal chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	dB := doubleChannel{make(chan int, 10), make(chan bool, 10)}
 
+	fmt.Printf("SEQNUM %d CREATING ITS CHANNELS\n", seqNum)
+
 	//création de la channel de communication
 	mutex.Lock()
 	(*doubleChannels)[seqNum] = dB

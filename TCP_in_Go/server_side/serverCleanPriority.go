@@ -423,11 +423,13 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				mutex.Unlock()
 
 				if *numberOfACKInWindow >= *CWND {
-					fmt.Printf("UPDATING WINDOW SIZE\n")
-					*CWND++
-					channelWindowGlobal <- false
-					*numberOfACKInWindow = 0
-					fmt.Printf("WINDOW SIZE : %d\n", *CWND)
+					go func() {
+						fmt.Printf("UPDATING WINDOW SIZE\n")
+						*CWND++
+						channelWindowGlobal <- false
+						*numberOfACKInWindow = 0
+						fmt.Printf("WINDOW SIZE : %d\n", *CWND)
+					}()
 				}
 			}
 

@@ -389,10 +389,10 @@ func packetHandling(mutex *sync.Mutex, ackChannels *map[int](chan int), channelL
 		}(ackChannel, srtt, lastTimeInt)
 
 		//on ne veut pas traiter une demande de retransmission faite par une go routine lancée avant de recevoir une demande de fast retransmit
-		for ack != 0 && ack != lastTimeInt {
+		for ack != 0 && ack != lastTimeInt && ack != -1 {
 			ack = <-ackChannel
 
-			if ack == lastTimeInt {
+			if ack == lastTimeInt || ack == -1 {
 				channelLoss <- seqNum
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 			}

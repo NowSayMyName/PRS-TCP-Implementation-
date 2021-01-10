@@ -387,6 +387,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 					if key <= highestReceivedSeqNum {
 						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 						dB.ackChannel <- 0
+						dB.windowChannel <- false
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 
 						delete((*doubleChannels), key)
@@ -410,6 +411,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 					if key <= highestReceivedSeqNum {
 						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 						dB.ackChannel <- 0
+						dB.windowChannel <- false
 						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 
 						delete((*doubleChannels), key)
@@ -474,7 +476,10 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 		fmt.Printf("SEQNUM %d REQUESTING BEING SENT\n", seqNum)
 		channelSendRequests <- seqNum
 		fmt.Printf("SEQNUM %d WAITING FOR AUTHORISATION\n", seqNum)
-		_ = <-dB.windowChannel
+		canSend := <-dB.windowChannel
+		if !canSend {
+			break
+		}
 		fmt.Printf("SEQNUM %d GRANTED AUTHORISATION\n", seqNum)
 
 		lastTime = time.Now()

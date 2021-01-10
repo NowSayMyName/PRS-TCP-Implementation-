@@ -329,63 +329,62 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 		fmt.Printf("PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 
 		//check si l'acquittement n'a pas déjà été reçu
-		// if timesReceived < 3 {
-		//slow start
-		if *CWND < *ssthresh {
-			mutex.Lock()
+		if timesReceived == 1 {
+			//slow start
+			if *CWND < *ssthresh {
+				mutex.Lock()
 
-			//on acquitte tous packets avec un numéro de séquence inférieur
-			for key, dB := range *doubleChannels {
-				if key <= highestReceivedSeqNum {
-					fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
-					dB.ackChannel <- 0
-					fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+				//on acquitte tous packets avec un numéro de séquence inférieur
+				for key, dB := range *doubleChannels {
+					if key <= highestReceivedSeqNum {
+						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
+						dB.ackChannel <- 0
+						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 
-					delete((*doubleChannels), key)
+						delete((*doubleChannels), key)
 
-					channelWindowGlobal <- false
+						channelWindowGlobal <- false
 
+						*CWND++
+						*numberOfACKInWindow++
+						fmt.Printf("WINDOW SIZE : %d\n", *CWND)
+					}
+				}
+
+				mutex.Unlock()
+				//congestion avoidance
+			} else {
+				mutex.Lock()
+
+				//on acquitte tous packets avec un numéro de séquence inférieur
+				for key, dB := range *doubleChannels {
+					if key <= highestReceivedSeqNum {
+						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
+						dB.ackChannel <- 0
+						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+
+						delete((*doubleChannels), key)
+
+						*numberOfACKInWindow++
+					}
+				}
+
+				mutex.Unlock()
+
+				if *numberOfACKInWindow >= *CWND {
 					*CWND++
-					*numberOfACKInWindow++
+					channelWindowGlobal <- false
+					*numberOfACKInWindow = 0
 					fmt.Printf("WINDOW SIZE : %d\n", *CWND)
 				}
 			}
 
-			mutex.Unlock()
-			//congestion avoidance
-		} else {
-			mutex.Lock()
-
-			//on acquitte tous packets avec un numéro de séquence inférieur
-			for key, dB := range *doubleChannels {
-				if key <= highestReceivedSeqNum {
-					fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
-					dB.ackChannel <- 0
-					fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
-
-					delete((*doubleChannels), key)
-
-					*numberOfACKInWindow++
-				}
+			//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
+			if *endOfFile && len(*doubleChannels) == 0 {
+				channelWindowGlobal <- true
 			}
-
-			mutex.Unlock()
-
-			if *numberOfACKInWindow >= *CWND {
-				*CWND++
-				channelWindowGlobal <- false
-				*numberOfACKInWindow = 0
-				fmt.Printf("WINDOW SIZE : %d\n", *CWND)
-			}
-		}
-
-		//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
-		if *endOfFile && len(*doubleChannels) == 0 {
-			channelWindowGlobal <- true
-		}
-		// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
-		// } else
-		if timesReceived == 3 {
+			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
+		} else if timesReceived == 3 {
 			mutex.Lock()
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()

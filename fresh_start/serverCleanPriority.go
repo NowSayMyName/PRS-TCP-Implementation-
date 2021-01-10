@@ -287,7 +287,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 
 						fmt.Printf("DONE DELETING\n")
 						for j := 0; j < 2; j++ {
-							channelWindowGlobal <- false
+							go func() { channelWindowGlobal <- false }()
 						}
 						fmt.Printf("DONE UPDATING WINDOW\n")
 
@@ -312,7 +312,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 						delete((*packets), seqNum)
 
 						fmt.Printf("DONE DELETING\n")
-						channelWindowGlobal <- false
+						go func() { channelWindowGlobal <- false }()
 						fmt.Printf("DONE UPDATING WINDOW\n")
 
 						*numberOfACKInWindow++

@@ -222,7 +222,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	executionTime := int(time.Now().Sub(executionTimeStart) / time.Second)
 	fmt.Printf("SENT %s\n", path)
-	fmt.Printf("Debit de  %v\n", float32(fileSize)/float32(executionTime))
+	fmt.Printf(">>>TIME :  %v\n s", float32(executionTime))
+	fmt.Printf(">>>FILE SIZE :  %v\n Mo", float32(fileSize/1000000))
+	fmt.Printf(">>>FLOW RATE :  %v\n Mo/s", float32(fileSize/1000000)/float32(executionTime))
 	return
 }
 

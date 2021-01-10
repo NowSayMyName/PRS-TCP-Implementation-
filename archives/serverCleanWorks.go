@@ -131,6 +131,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, firstRTT int) (err error) {
+	executionTimeStart := time.Now()
 	seqNum := 1
 
 	pwd, err := os.Getwd()
@@ -144,6 +145,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	finalPath = strings.Replace(finalPath, "\r", "", -1)
 	finalPath = strings.Replace(finalPath, "%", "", -1)
 	finalPath = strings.Replace(finalPath, "\x00", "", -1)
+
+	info, err := os.Stat(finalPath)
+	if err != nil {
+		return err
+	}
+	fileSize := info.Size()
+	fmt.Printf("FILE SIZE : %v\n", fileSize)
 
 	f, err := os.Open(finalPath)
 	if err != nil {
@@ -212,7 +220,9 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		return
 	}
 
+	executionTime := int(time.Now().Sub(executionTimeStart) / time.Second)
 	fmt.Printf("SENT %s\n", path)
+	fmt.Printf("Debit de  %v\n", float32(fileSize)/float32(executionTime))
 	return
 }
 

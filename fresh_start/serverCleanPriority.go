@@ -279,6 +279,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 			if *CWND < *ssthresh {
 				fmt.Printf("LOCKING\n")
 				mutex.Lock()
+				fmt.Printf("LOCK ACQUIRED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for seqNum := range *packets {
@@ -305,6 +306,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 				fmt.Printf("LOCKING\n")
 
 				mutex.Lock()
+				fmt.Printf("LOCK ACQUIRED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for seqNum := range *packets {

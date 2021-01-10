@@ -322,7 +322,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			timesReceived = 1
 		}
 
-		fmt.Printf("PROCESSING SEQNUM : %d", highestReceivedSeqNum)
+		fmt.Printf("PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {

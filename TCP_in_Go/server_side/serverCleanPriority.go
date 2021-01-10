@@ -287,13 +287,17 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 
 		go func() {
 			for {
+				fmt.Printf("WAITING FOR SEND REQUESTS")
 				_ = <-channelPacketsAvailable
+				fmt.Printf("PROCESSING SEND REQUEST\n")
 				if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
 					doubleChannel.windowChannel <- true
 					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+					fmt.Printf("SEND REQUEST ACCEPTED")
 					break
 				} else {
 					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
+					fmt.Printf("SEND REQUEST REJECTED")
 				}
 			}
 		}()
@@ -387,7 +391,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
 func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan bool, channelSendRequests chan int, channelWindowGlobal chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
-	dB := doubleChannel{make(chan int, 20), make(chan bool)}
+	dB := doubleChannel{make(chan int, 10), make(chan bool)}
 
 	//création de la channel de communication
 	mutex.Lock()

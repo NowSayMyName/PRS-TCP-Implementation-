@@ -226,6 +226,8 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 			return
 		}
 
+		fmt.Printf("RECEIVED " + string(transmissionBuffer[0:9]) + "\n")
+
 		//si le message est un ACK, on l'envoie se faire traiter
 		if string(transmissionBuffer[0:3]) == "ACK" {
 			packetNum, _ := strconv.Atoi(string(transmissionBuffer[3:9]))
@@ -356,7 +358,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 
 	var lastTime time.Time
 	for {
-		fmt.Printf("SENDING SEQNUM : %d", seqNum)
+		fmt.Printf("SENDING SEQNUM : %d\n", seqNum)
 		lastTime = time.Now()
 
 		_, err := dataConn.WriteTo(msg, dataAddr)

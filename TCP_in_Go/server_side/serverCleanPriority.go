@@ -360,6 +360,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			//slow start
 			if *CWND < *ssthresh {
 				mutex.Lock()
+				fmt.Printf("LOCKED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
@@ -379,9 +380,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 
 				mutex.Unlock()
+				fmt.Printf("UNLOCKED\n")
+
 				//congestion avoidance
 			} else {
 				mutex.Lock()
+				fmt.Printf("LOCKED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
@@ -397,6 +401,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 
 				mutex.Unlock()
+				fmt.Printf("UNLOCKED\n")
 
 				if *numberOfACKInWindow >= *CWND {
 					*CWND++
@@ -413,8 +418,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
 			mutex.Lock()
+			fmt.Printf("LOCKED\n")
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()
+			fmt.Printf("UNLOCKED\n")
 
 			timesReceived = 0
 		}

@@ -420,6 +420,8 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			mutex.Lock()
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()
+
+			timesReceived = 0
 		}
 
 		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)

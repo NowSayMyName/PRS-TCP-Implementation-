@@ -250,7 +250,7 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 func handleLostPackets(transmitting *bool, channelLoss chan bool, packetsToBeSent *[]int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
 		_ = <-channelLoss
-		fmt.Printf("LOSS")
+		fmt.Printf("LOSS\n")
 
 		// fast recovery
 		*CWND /= 2
@@ -263,7 +263,7 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 	for *transmitting {
 		seqNum := <-channelSendRequests
 
-		fmt.Printf("%d WANTS TO BE SENT", seqNum)
+		fmt.Printf("%d WANTS TO BE SENT\n", seqNum)
 
 		//ajoute l'élément et trie la slice
 		*packetsToBeSent = append(*packetsToBeSent, seqNum)

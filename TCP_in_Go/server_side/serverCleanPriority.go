@@ -250,6 +250,7 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 func handleLostPackets(transmitting *bool, channelLoss chan bool, packetsToBeSent *[]int, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
 		_ = <-channelLoss
+		fmt.Printf("LOSS")
 
 		// fast recovery
 		*CWND /= 2
@@ -261,6 +262,8 @@ func handleLostPackets(transmitting *bool, channelLoss chan bool, packetsToBeSen
 func handleSendRequests(transmitting *bool, channelSendRequests chan int, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
 		seqNum := <-channelSendRequests
+
+		fmt.Printf("%d WANTS TO BE SENT", seqNum)
 
 		//ajoute l'élément et trie la slice
 		*packetsToBeSent = append(*packetsToBeSent, seqNum)
@@ -371,8 +374,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			}
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
-			fmt.Printf("PACKET : %d DROPPED\n", highestReceivedSeqNum+1)
-
 			mutex.Lock()
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()
@@ -406,7 +407,9 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 	//Tant qu'on a pas reçu l'acquittement
 	for ack != 0 {
 		//waiting for autorisation to send
+		fmt.Printf("REQUESTING BEING SENT\n")
 		channelSendRequests <- seqNum
+		fmt.Printf("WAITING FOR AUTHORISATION\n")
 		_ = <-dB.windowChannel
 
 		lastTime = time.Now()

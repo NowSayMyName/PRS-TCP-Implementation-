@@ -211,7 +211,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	}
 
 	lastSeqNum = seqNum
-	fmt.Printf("LAST SEQNUM : %d", lastSeqNum)
+	fmt.Printf("LAST SEQNUM : %d\n", lastSeqNum)
 
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
 	finished := false
@@ -385,10 +385,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
 					if key <= highestReceivedSeqNum {
-						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
+						// fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 						dB.ackChannel <- 0
 						dB.windowChannel <- false
-						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						// fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 
 						delete((*doubleChannels), key)
 
@@ -409,10 +409,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
 					if key <= highestReceivedSeqNum {
-						fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
+						// fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 						dB.ackChannel <- 0
 						dB.windowChannel <- false
-						fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+						// fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
 
 						delete((*doubleChannels), key)
 
@@ -439,13 +439,15 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			mutex.Unlock()
 		}
 
+		if *endOfFile == highestReceivedSeqNum {
+			fmt.Printf("ALL PACKETS HAVE BEEN RECEIVED\n")
+			channelWindowGlobal <- true
+		}
+
 		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 	}
 	//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
-	if *endOfFile == highestReceivedSeqNum {
-		fmt.Printf("REACHED END OF FILE\n")
-		channelWindowGlobal <- true
-	}
+
 	return
 }
 

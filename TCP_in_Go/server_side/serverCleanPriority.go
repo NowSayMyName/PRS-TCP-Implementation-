@@ -449,6 +449,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 
 				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+				break
 			} else if ack == -1 {
 				channelLoss <- true
 				channelWindowGlobal <- false

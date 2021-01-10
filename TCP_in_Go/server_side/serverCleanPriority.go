@@ -182,23 +182,24 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	bufferSize := 1494
 	r := bufio.NewReader(f)
 	readingBuffer := make([]byte, bufferSize)
-	endOfFile := -1
+	endOfFile := false
+	lastSeqNum := -1
 
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
-	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &endOfFile)
+	go handleACK(connected, mutexChannels, allACKChannel, doubleChannels, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &lastSeqNum)
 	go handleLostPackets(connected, channelLoss, &packetsToBeSent, &ssthresh, &CWND, &numberOfACKInWindow)
 	go handleWindowPriority(connected, mutexChannels, mutexPackets, doubleChannels, channelWindowGlobal, channelWindowNewPackets, channelPacketsAvailable, &packetsToBeSent)
 	go handleSendRequests(connected, mutexPackets, channelSendRequests, channelPacketsAvailable, &packetsToBeSent)
 
 	//Reading the file
-	for endOfFile == -1 {
+	for !endOfFile {
 		seqNum++
 
 		n, err := io.ReadFull(r, readingBuffer)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			fmt.Printf("REACHED EOF\n")
-			endOfFile = seqNum
+			endOfFile = true
 		} else if err != nil {
 			fmt.Println("Error reading file:", err)
 			return err
@@ -209,8 +210,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		go packetHandling(mutexChannels, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 	}
 
-	fmt.Printf("LAST SEQNUM : %d", endOfFile)
-	endOfFile = seqNum
+	lastSeqNum = seqNum
+	fmt.Printf("LAST SEQNUM : %d", lastSeqNum)
 
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier
 	finished := false

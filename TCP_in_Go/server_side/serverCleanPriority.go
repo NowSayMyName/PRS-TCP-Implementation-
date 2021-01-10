@@ -278,6 +278,7 @@ func handleSendRequests(transmitting *bool, channelSendRequests chan int, channe
 /** gives the window place to the highest priority target (lowest retransmitted seqnum first, new packet last)*/
 func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChannel, channelWindowGlobal chan bool, channelWindowNewPackets chan bool, channelPacketsAvailable chan bool, packetsToBeSent *[]int) {
 	for *transmitting {
+		fmt.Printf("WAITING FOR WINDOW DISPONIBILITY\n")
 		msg := <-channelWindowGlobal
 
 		if len(*packetsToBeSent) == 0 {

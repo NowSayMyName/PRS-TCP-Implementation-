@@ -389,6 +389,8 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()
 		}
+
+		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 	}
 	return
 }
@@ -443,7 +445,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 			ack = <-dB.ackChannel
 
 			if ack == 0 {
-				fmt.Printf("RECEIVED ACK\n")
+				fmt.Printf("%d RECEIVED ACK\n", seqNum)
 				break
 			} else if ack == lastTimeInt {
 				channelLoss <- true

@@ -206,7 +206,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		go packetHandling(mutex, doubleChannels, channelLoss, channelSendRequests, channelWindowGlobal, append([]byte(nil), readingBuffer[:n]...), seqNum, dataConn, dataAddr, &firstRTT)
 
 		seqNum++
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		// time.Sleep(time.Duration(500) * time.Millisecond)
 	}
 
 	//on attend que tous les paquets sont bien reçu (acquittés) avant d'envoyer la fin de fichier

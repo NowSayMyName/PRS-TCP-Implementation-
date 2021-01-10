@@ -446,6 +446,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 		channelSendRequests <- seqNum
 		fmt.Printf("SEQNUM %d WAITING FOR AUTHORISATION\n", seqNum)
 		_ = <-dB.windowChannel
+		fmt.Printf("SEQNUM %d GRANTED AUTHORISATION\n", seqNum)
 
 		lastTime = time.Now()
 		lastTimeInt := lastTime.Nanosecond()

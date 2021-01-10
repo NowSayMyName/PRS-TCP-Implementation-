@@ -316,13 +316,13 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 
 			// fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKE\n")
 
-			mutexChannels.Lock()
-			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
-			mutexChannels.Unlock()
-
+			mutexPackets.Lock()
 			packet := (*packetsToBeSent)[0]
 
-			mutexPackets.Lock()
+			mutexChannels.Lock()
+			doubleChannel, ok := (*doubleChannels)[packet]
+			mutexChannels.Unlock()
+
 			if ok {
 				fmt.Printf("ACCEPTING SEND REQUEST FROM %d\n", packet)
 				doubleChannel.windowChannel <- true
@@ -448,7 +448,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, channelLoss chan bool, channelSendRequests chan int, channelWindowGlobal chan bool, content []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
 	dB := doubleChannel{make(chan int, 10), make(chan bool, 10)}
 
-	fmt.Printf("SEQNUM %d CREATING ITS CHANNELS\n", seqNum)
+	// fmt.Printf("SEQNUM %d CREATING ITS CHANNELS\n", seqNum)
 
 	//création de la channel de communication
 	mutex.Lock()
@@ -503,7 +503,7 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 			if ack == 0 {
 				channelWindowGlobal <- false
 
-				fmt.Printf("%d RECEIVED ACK\n", seqNum)
+				// fmt.Printf("%d RECEIVED ACK\n", seqNum)
 				break
 			} else if ack == lastTimeInt {
 				channelLoss <- true

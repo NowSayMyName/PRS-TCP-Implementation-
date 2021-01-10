@@ -379,6 +379,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 		mutex.Lock()
 		if _, ok := (*packets)[seqNum]; !ok {
 			fmt.Printf("ENDING ROUTINE FOR SEQNUM : %d\n", seqNum)
+			mutex.Unlock()
 			break
 		}
 		mutex.Unlock()

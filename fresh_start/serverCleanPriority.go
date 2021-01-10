@@ -199,7 +199,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		(*packets)[seqNum] = packet
 		mutex.Unlock()
 
-		packetHandling(mutex, packets, channelLoss, packet, seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutex, packets, channelLoss, packet, seqNum, dataConn, dataAddr, &firstRTT)
 	}
 
 	lastSeqNum = seqNum

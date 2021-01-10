@@ -340,6 +340,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 					fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 					dB.ackChannel <- 0
 					fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+
 					delete((*doubleChannels), key)
 
 					channelWindowGlobal <- false
@@ -358,8 +359,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			//on acquitte tous packets avec un numéro de séquence inférieur
 			for key, dB := range *doubleChannels {
 				if key <= highestReceivedSeqNum {
+					fmt.Printf("SENDING YOU ACK, SEQNUM %d\n", key)
 					dB.ackChannel <- 0
-					// fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+					fmt.Printf("YOU RECEIVED ACK, SEQNUM %d\n", key)
+
 					delete((*doubleChannels), key)
 
 					*numberOfACKInWindow++

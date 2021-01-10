@@ -287,17 +287,17 @@ func handleWindowPriority(transmitting *bool, doubleChannels *map[int]doubleChan
 
 		go func() {
 			for {
-				fmt.Printf("WAITING FOR SEND REQUESTS")
+				fmt.Printf("WAITING FOR SEND REQUESTS\n")
 				_ = <-channelPacketsAvailable
 				fmt.Printf("PROCESSING SEND REQUEST\n")
 				if doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]; ok {
 					doubleChannel.windowChannel <- true
 					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-					fmt.Printf("SEND REQUEST ACCEPTED")
+					fmt.Printf("SEND REQUEST ACCEPTE\n")
 					break
 				} else {
 					*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
-					fmt.Printf("SEND REQUEST REJECTED")
+					fmt.Printf("SEND REQUEST REJECTED\n")
 				}
 			}
 		}()

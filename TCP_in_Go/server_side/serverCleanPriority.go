@@ -343,6 +343,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 				// fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 			}
 		} else {
+			fmt.Printf("CAN SEND EOF\n")
 			channelWindowNewPackets <- true
 		}
 	}

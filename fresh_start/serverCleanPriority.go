@@ -152,7 +152,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// variables de fonctionnement de transmission
 	ssthresh := 256
-	CWND := 4
+	CWND := 1
 	numberOfACKInWindow := 0
 	firstRTT = 20000
 
@@ -364,6 +364,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 
 		mutex.Lock()
 		if _, ok := (*packets)[seqNum]; !ok {
+			fmt.Printf("ENDING ROUTINE FOR SEQNUM : %d\n", seqNum)
 			break
 		}
 		mutex.Unlock()

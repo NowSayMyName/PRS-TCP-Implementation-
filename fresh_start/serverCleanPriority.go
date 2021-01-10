@@ -277,6 +277,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 		if timesReceived == 1 {
 			//slow start
 			if *CWND < *ssthresh {
+				fmt.Printf("LOCKING\n")
 				mutex.Lock()
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
@@ -297,9 +298,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 				}
 
 				mutex.Unlock()
+				fmt.Printf("UNLOCKING\n")
 
 				//congestion avoidance
 			} else {
+				fmt.Printf("LOCKING\n")
+
 				mutex.Lock()
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
@@ -316,6 +320,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 				}
 
 				mutex.Unlock()
+				fmt.Printf("UNLOCKING\n")
 
 				if *numberOfACKInWindow >= *CWND {
 					go func() {

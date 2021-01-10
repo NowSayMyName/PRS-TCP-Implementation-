@@ -282,9 +282,11 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 					if seqNum <= highestReceivedSeqNum {
 						delete((*packets), seqNum)
 
+						fmt.Printf("DONE DELETING\n")
 						for j := 0; j < 2; j++ {
 							channelWindowGlobal <- false
 						}
+						fmt.Printf("DONE UPDATING WINDOW\n")
 
 						*CWND++
 						*numberOfACKInWindow++
@@ -303,7 +305,9 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 					if seqNum <= highestReceivedSeqNum {
 						delete((*packets), seqNum)
 
+						fmt.Printf("DONE DELETING\n")
 						channelWindowGlobal <- false
+						fmt.Printf("DONE UPDATING WINDOW\n")
 
 						*numberOfACKInWindow++
 					}

@@ -264,9 +264,9 @@ func contains(slice []int, element int) bool {
 	for _, a := range slice {
 		if a == element {
 			return true
-		} else if a > element {
-			return false
-		}
+		} // else if a > element {
+		// 	return false
+		// }
 	}
 	return false
 }
@@ -279,6 +279,7 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 
 		//ajoute l'élément s'il n'est pas déjà dedans et trie la slice
 		mutexPackets.Lock()
+		fmt.Printf("SEND REQUEST LOCKING MUTEX PACKET")
 
 		if !contains(*packetsToBeSent, seqNum) {
 			*packetsToBeSent = append(*packetsToBeSent, seqNum)
@@ -292,6 +293,7 @@ func handleSendRequests(transmitting *bool, mutexPackets *sync.Mutex, channelSen
 			fmt.Printf("SEQNUM %d REJECTED IN PRIORITY QUEUE\n", seqNum)
 		}
 		mutexPackets.Unlock()
+		fmt.Printf("SEND REQUEST UNLOCKING MUTEX PACKET")
 
 	}
 }
@@ -303,10 +305,15 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 		msg := <-channelWindowGlobal
 		fmt.Printf("WINDOW DISPONIBILITY FOUND\n")
 
+		mutexPackets.Lock()
+		fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET")
+
 		if len(*packetsToBeSent) == 0 {
 			channelWindowNewPackets <- msg
 			fmt.Printf("CREATING NEW PACKET\n")
 		}
+		mutexPackets.Unlock()
+		fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET")
 
 		for {
 			fmt.Printf("WAITING FOR SEND REQUESTS\n")
@@ -314,6 +321,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 			fmt.Printf("PROCESSING SEND REQUEST\n")
 
 			mutexPackets.Lock()
+			fmt.Printf("WINDOW PRIORITY LOCKING MUTEX PACKET")
 
 			mutexChannels.Lock()
 			doubleChannel, ok := (*doubleChannels)[(*packetsToBeSent)[0]]
@@ -335,6 +343,7 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 				}
 			}
 			mutexPackets.Unlock()
+			fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET")
 
 		}
 	}
@@ -369,7 +378,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			//slow start
 			if *CWND < *ssthresh {
 				mutex.Lock()
-				fmt.Printf("LOCKED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
@@ -389,12 +397,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 
 				mutex.Unlock()
-				fmt.Printf("UNLOCKED\n")
 
 				//congestion avoidance
 			} else {
 				mutex.Lock()
-				fmt.Printf("LOCKED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
 				for key, dB := range *doubleChannels {
@@ -410,7 +416,6 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 				}
 
 				mutex.Unlock()
-				fmt.Printf("UNLOCKED\n")
 
 				if *numberOfACKInWindow >= *CWND {
 					*CWND++
@@ -427,12 +432,8 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, do
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
 			mutex.Lock()
-			fmt.Printf("LOCKED\n")
 			(*doubleChannels)[highestReceivedSeqNum+1].ackChannel <- -1
 			mutex.Unlock()
-			fmt.Printf("UNLOCKED\n")
-
-			// timesReceived = 0
 		}
 
 		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)

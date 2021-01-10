@@ -441,12 +441,19 @@ func packetHandling(mutex *sync.Mutex, doubleChannels *map[int]doubleChannel, ch
 			ack = <-dB.ackChannel
 
 			if ack == 0 {
+				fmt.Printf("RECEIVED ACK\n")
 				break
-			} else if ack == lastTimeInt || ack == -1 {
+			} else if ack == lastTimeInt {
 				channelLoss <- true
 				channelWindowGlobal <- false
 
-				// fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
+				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " TIMED OUT\n")
+				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
+			} else if ack == -1 {
+				channelLoss <- true
+				channelWindowGlobal <- false
+
+				fmt.Printf("SEQNUM " + strconv.Itoa(seqNum) + " FAST RETRANSMIT\n")
 				fmt.Printf("RESENDING : " + strconv.Itoa(seqNum) + "\n")
 				break
 			}

@@ -332,6 +332,9 @@ func handleWindowPriority(transmitting *bool, mutexChannels *sync.Mutex, mutexPa
 				doubleChannel.windowChannel <- true
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]
 				fmt.Printf("SEND REQUEST ACCEPTED\n")
+
+				mutexPackets.Unlock()
+				fmt.Printf("WINDOW PRIORITY UNLOCKING MUTEX PACKET\n")
 				break
 			} else {
 				*packetsToBeSent = (*packetsToBeSent)[1:len(*packetsToBeSent)]

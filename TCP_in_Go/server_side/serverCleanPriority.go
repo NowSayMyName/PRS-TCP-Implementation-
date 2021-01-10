@@ -170,8 +170,8 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelLoss := make(chan bool, 100)
 	allACKChannel := make(chan int, 1000)
 	doubleChannels := &map[int]doubleChannel{}
-	channelSendRequests := make(chan int)
-	channelPacketsAvailable := make(chan bool)
+	channelSendRequests := make(chan int, 100)
+	channelPacketsAvailable := make(chan bool, 100)
 	packetsToBeSent := []int{}
 
 	//mutex de protection de la map ackChannels

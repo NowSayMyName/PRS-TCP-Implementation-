@@ -367,7 +367,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 					timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
 					*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
 
-					fmt.Printf("SRTT : %d\n", *SRTT)
+					// fmt.Printf("SRTT : %d\n", *SRTT)
 					delete((*packets), seqNum)
 
 					// fmt.Printf("DONE DELETING\n")

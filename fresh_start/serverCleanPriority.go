@@ -207,10 +207,6 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowGlobal
 
-		mutex.Lock()
-		(*packets)[seqNum] = packet{content, time.Now()}
-		mutex.Unlock()
-
 		go packetHandling(mutex, packets, channelLoss, content, seqNum, dataConn, dataAddr, firstRTT)
 	}
 
@@ -415,6 +411,9 @@ func packetHandling(mutex *sync.Mutex, packets *map[int]packet, channelLoss chan
 	//Tant qu'on a pas reçu l'acquittement
 
 	for {
+		mutex.Lock()
+		(*packets)[seqNum] = packet{msg, time.Now()}
+		mutex.Unlock()
 		// fmt.Printf("SENDING SEQNUM : %d\n", seqNum)
 
 		_, err := dataConn.WriteTo(msg, dataAddr)

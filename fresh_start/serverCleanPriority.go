@@ -157,7 +157,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// variables de fonctionnement de transmission
 	ssthresh := 256
-	CWND := 1
+	CWND := 50
 	numberOfACKInWindow := 0
 	firstRTT = 20000
 
@@ -280,73 +280,98 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {
-			//slow start
-			if *CWND < *ssthresh {
-				fmt.Printf("LOCKING\n")
-				mutex.Lock()
-				fmt.Printf("LOCK ACQUIRED\n")
+			// //slow start
+			// if *CWND < *ssthresh {
+			// 	fmt.Printf("LOCKING\n")
+			// 	mutex.Lock()
+			// 	fmt.Printf("LOCK ACQUIRED\n")
 
-				//on acquitte tous packets avec un numéro de séquence inférieur
-				for seqNum, packet := range *packets {
-					if seqNum <= highestReceivedSeqNum {
-						timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
-						*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
+			// 	//on acquitte tous packets avec un numéro de séquence inférieur
+			// 	for seqNum, packet := range *packets {
+			// 		if seqNum <= highestReceivedSeqNum {
+			// 			timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
+			// 			*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
 
-						fmt.Printf("SRTT : %d\n", *SRTT)
-						delete((*packets), seqNum)
+			// 			fmt.Printf("SRTT : %d\n", *SRTT)
+			// 			delete((*packets), seqNum)
 
-						fmt.Printf("DONE DELETING\n")
-						for j := 0; j < 2; j++ {
-							go func() { channelWindowGlobal <- false }()
-						}
-						fmt.Printf("DONE UPDATING WINDOW\n")
+			// 			fmt.Printf("DONE DELETING\n")
+			// 			for j := 0; j < 2; j++ {
+			// 				go func() { channelWindowGlobal <- false }()
+			// 			}
+			// 			fmt.Printf("DONE UPDATING WINDOW\n")
 
-						*CWND++
-						*numberOfACKInWindow++
-						fmt.Printf("WINDOW SIZE : %d\n", *CWND)
-					}
-				}
+			// 			*CWND++
+			// 			*numberOfACKInWindow++
+			// 			fmt.Printf("WINDOW SIZE : %d\n", *CWND)
+			// 		}
+			// 	}
 
-				mutex.Unlock()
-				fmt.Printf("UNLOCKING\n")
+			// 	mutex.Unlock()
+			// 	fmt.Printf("UNLOCKING\n")
 
-				//congestion avoidance
-			} else {
-				fmt.Printf("LOCKING\n")
+			// 	//congestion avoidance
+			// } else {
+			// 	fmt.Printf("LOCKING\n")
 
-				mutex.Lock()
-				fmt.Printf("LOCK ACQUIRED\n")
+			// 	mutex.Lock()
+			// 	fmt.Printf("LOCK ACQUIRED\n")
 
-				//on acquitte tous packets avec un numéro de séquence inférieur
-				for seqNum, packet := range *packets {
-					if seqNum <= highestReceivedSeqNum {
-						timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
-						*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
+			// 	//on acquitte tous packets avec un numéro de séquence inférieur
+			// 	for seqNum, packet := range *packets {
+			// 		if seqNum <= highestReceivedSeqNum {
+			// 			timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
+			// 			*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
 
-						fmt.Printf("SRTT : %d\n", *SRTT)
-						delete((*packets), seqNum)
+			// 			fmt.Printf("SRTT : %d\n", *SRTT)
+			// 			delete((*packets), seqNum)
 
-						fmt.Printf("DONE DELETING\n")
-						go func() { channelWindowGlobal <- false }()
-						fmt.Printf("DONE UPDATING WINDOW\n")
+			// 			fmt.Printf("DONE DELETING\n")
+			// 			go func() { channelWindowGlobal <- false }()
+			// 			fmt.Printf("DONE UPDATING WINDOW\n")
 
-						*numberOfACKInWindow++
-					}
-				}
+			// 			*numberOfACKInWindow++
+			// 		}
+			// 	}
 
-				mutex.Unlock()
-				fmt.Printf("UNLOCKING\n")
+			// 	mutex.Unlock()
+			// 	fmt.Printf("UNLOCKING\n")
 
-				if *numberOfACKInWindow >= *CWND {
-					go func() {
-						fmt.Printf("UPDATING WINDOW SIZE\n")
-						*CWND++
-						channelWindowGlobal <- false
-						*numberOfACKInWindow = 0
-						fmt.Printf("WINDOW SIZE : %d\n", *CWND)
-					}()
+			// 	if *numberOfACKInWindow >= *CWND {
+			// 		go func() {
+			// 			fmt.Printf("UPDATING WINDOW SIZE\n")
+			// 			*CWND++
+			// 			channelWindowGlobal <- false
+			// 			*numberOfACKInWindow = 0
+			// 			fmt.Printf("WINDOW SIZE : %d\n", *CWND)
+			// 		}()
+			// 	}
+			// }
+			fmt.Printf("LOCKING\n")
+
+			mutex.Lock()
+			fmt.Printf("LOCK ACQUIRED\n")
+
+			//on acquitte tous packets avec un numéro de séquence inférieur
+			for seqNum, packet := range *packets {
+				if seqNum <= highestReceivedSeqNum {
+					timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
+					*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
+
+					fmt.Printf("SRTT : %d\n", *SRTT)
+					delete((*packets), seqNum)
+
+					fmt.Printf("DONE DELETING\n")
+					go func() { channelWindowGlobal <- false }()
+					fmt.Printf("DONE UPDATING WINDOW\n")
+
+					*numberOfACKInWindow++
 				}
 			}
+
+			mutex.Unlock()
+			fmt.Printf("UNLOCKING\n")
+
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
 		}

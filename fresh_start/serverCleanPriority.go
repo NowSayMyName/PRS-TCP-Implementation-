@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+type packet struct {
+	content []byte
+	time    time.Time
+}
+
 func getArgs() (portNumber int) {
 	if len(os.Args) != 2 {
 		fmt.Printf("Usage: go run serverClean.go  <port_number>\n")
@@ -161,7 +166,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	channelLoss := make(chan bool, 100)
 	allACKChannel := make(chan int, 1000)
 
-	packets := &map[int][]byte{}
+	packets := &map[int]packet{}
 	channelEndOfFile := make(chan bool)
 
 	var mutex = &sync.Mutex{}
@@ -175,7 +180,7 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 
 	// go routines d'écoute et de traitement d'ack/pertes
 	go listenACK(connected, dataConn, allACKChannel)
-	go handleACK(connected, mutex, allACKChannel, packets, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &lastSeqNum, channelEndOfFile)
+	go handleACK(connected, mutex, allACKChannel, packets, channelWindowGlobal, &ssthresh, &CWND, &numberOfACKInWindow, &lastSeqNum, channelEndOfFile, &firstRTT)
 	go handleLostPackets(connected, channelLoss, &ssthresh, &CWND, &numberOfACKInWindow)
 
 	//Reading the file
@@ -191,15 +196,15 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 			return err
 		}
 
-		packet := createPacket(seqNum, append([]byte(nil), readingBuffer[:n]...))
+		content := createPacket(seqNum, append([]byte(nil), readingBuffer[:n]...))
 		//on attend que la window permette d'envoyer un msg
 		_ = <-channelWindowGlobal
 
 		mutex.Lock()
-		(*packets)[seqNum] = packet
+		(*packets)[seqNum] = packet{content, time.Now()}
 		mutex.Unlock()
 
-		go packetHandling(mutex, packets, channelLoss, packet, seqNum, dataConn, dataAddr, &firstRTT)
+		go packetHandling(mutex, packets, channelLoss, content, seqNum, dataConn, dataAddr, firstRTT)
 	}
 
 	lastSeqNum = seqNum
@@ -250,7 +255,7 @@ func handleLostPackets(transmitting *bool, channelLoss chan bool, ssthresh *int,
 }
 
 /** traite tout ack reçu */
-func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, packets *map[int][]byte, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *int, channelEndOfFile chan bool) (err error) {
+func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, packets *map[int]packet, channelWindowGlobal chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int, endOfFile *int, channelEndOfFile chan bool, SRTT *int) (err error) {
 	//fast retransmit variables
 	highestReceivedSeqNum := 0
 	timesReceived := 0
@@ -282,8 +287,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 				fmt.Printf("LOCK ACQUIRED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
-				for seqNum := range *packets {
+				for seqNum, packet := range *packets {
 					if seqNum <= highestReceivedSeqNum {
+						timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
+						*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
+
+						fmt.Printf("SRTT : %d\n", *SRTT)
 						delete((*packets), seqNum)
 
 						fmt.Printf("DONE DELETING\n")
@@ -309,8 +318,12 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 				fmt.Printf("LOCK ACQUIRED\n")
 
 				//on acquitte tous packets avec un numéro de séquence inférieur
-				for seqNum := range *packets {
+				for seqNum, packet := range *packets {
 					if seqNum <= highestReceivedSeqNum {
+						timeDiff := int(time.Now().Sub(packet.time) / time.Microsecond)
+						*SRTT = int(0.9*float32(*SRTT) + 0.1*float32(timeDiff))
+
+						fmt.Printf("SRTT : %d\n", *SRTT)
 						delete((*packets), seqNum)
 
 						fmt.Printf("DONE DELETING\n")
@@ -360,13 +373,11 @@ func createPacket(seqNum int, content []byte) []byte {
 }
 
 /** s'occupe de créer le packet et de l'envoyer/renvoyer*/
-func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan bool, msg []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, srtt *int) {
+func packetHandling(mutex *sync.Mutex, packets *map[int]packet, channelLoss chan bool, msg []byte, seqNum int, dataConn *net.UDPConn, dataAddr net.Addr, rtt int) {
 	//Tant qu'on a pas reçu l'acquittement
 
-	var lastTime time.Time
 	for {
 		fmt.Printf("SENDING SEQNUM : %d\n", seqNum)
-		lastTime = time.Now()
 
 		_, err := dataConn.WriteTo(msg, dataAddr)
 		if err != nil {
@@ -374,7 +385,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 			return
 		}
 
-		time.Sleep(time.Duration(int(float32(*srtt)*3)) * time.Microsecond)
+		time.Sleep(time.Duration(rtt*3) * time.Microsecond)
 
 		mutex.Lock()
 		if _, ok := (*packets)[seqNum]; !ok {
@@ -386,9 +397,4 @@ func packetHandling(mutex *sync.Mutex, packets *map[int][]byte, channelLoss chan
 
 		channelLoss <- true
 	}
-
-	timeDiff := int(time.Now().Sub(lastTime) / time.Microsecond)
-	*srtt = int(0.9*float32(*srtt) + 0.1*float32(timeDiff))
-
-	fmt.Printf("SRTT : %d\n", *srtt)
 }

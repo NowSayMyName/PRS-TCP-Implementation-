@@ -134,6 +134,7 @@ func acceptConnection(publicConn *net.UDPConn, ipAddress string, dataPort int) (
 
 /** takes a path to a file and sends it to the given address*/
 func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.Addr, firstRTT int) (err error) {
+	executionTimeStart := time.Now()
 	seqNum := 0
 
 	pwd, err := os.Getwd()
@@ -147,6 +148,12 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 	finalPath = strings.Replace(finalPath, "\r", "", -1)
 	finalPath = strings.Replace(finalPath, "%", "", -1)
 	finalPath = strings.Replace(finalPath, "\x00", "", -1)
+
+	info, err := os.Stat(finalPath)
+	if err != nil {
+		return err
+	}
+	fileSize := float32(info.Size()) / float32(1000000)
 
 	f, err := os.Open(finalPath)
 	if err != nil {
@@ -216,7 +223,13 @@ func sendFile(connected *bool, path string, dataConn *net.UDPConn, dataAddr net.
 		return
 	}
 
+	// fmt.Printf("SENT %s\n", path)
+
+	executionTime := float32(time.Now().Sub(executionTimeStart)) / float32(time.Second)
 	fmt.Printf("SENT %s\n", path)
+	fmt.Printf(">>>TIME :  %v s\n ", executionTime)
+	fmt.Printf(">>>FILE SIZE :  %v Mo\n ", fileSize)
+	fmt.Printf(">>>FLOW RATE :  %v Mo/s\n ", fileSize/executionTime)
 	return
 }
 
@@ -231,7 +244,7 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 			return
 		}
 
-		fmt.Printf("RECEIVED " + string(transmissionBuffer[0:9]) + "\n")
+		// fmt.Printf("RECEIVED " + string(transmissionBuffer[0:9]) + "\n")
 
 		//si le message est un ACK, on l'envoie se faire traiter
 		if string(transmissionBuffer[0:3]) == "ACK" {
@@ -245,7 +258,7 @@ func listenACK(transmitting *bool, dataConn *net.UDPConn, allACKChannel chan int
 func handleLostPackets(transmitting *bool, channelLoss chan bool, ssthresh *int, CWND *int, numberOfACKInWindow *int) {
 	for *transmitting {
 		_ = <-channelLoss
-		fmt.Printf("LOSS\n")
+		// fmt.Printf("LOSS\n")
 
 		// fast recovery
 		*CWND /= 2
@@ -276,7 +289,7 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 			timesReceived = 1
 		}
 
-		fmt.Printf("PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
+		// fmt.Printf("PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 
 		//check si l'acquittement n'a pas déjà été reçu
 		if timesReceived == 1 {
@@ -347,10 +360,10 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 			// 		}()
 			// 	}
 			// }
-			fmt.Printf("LOCKING\n")
+			// fmt.Printf("LOCKING\n")
 
 			mutex.Lock()
-			fmt.Printf("LOCK ACQUIRED\n")
+			// fmt.Printf("LOCK ACQUIRED\n")
 
 			//on acquitte tous packets avec un numéro de séquence inférieur
 			for seqNum, packet := range *packets {
@@ -361,27 +374,27 @@ func handleACK(transmitting *bool, mutex *sync.Mutex, allACKChannel chan int, pa
 					fmt.Printf("SRTT : %d\n", *SRTT)
 					delete((*packets), seqNum)
 
-					fmt.Printf("DONE DELETING\n")
+					// fmt.Printf("DONE DELETING\n")
 					go func() { channelWindowGlobal <- false }()
-					fmt.Printf("DONE UPDATING WINDOW\n")
+					// fmt.Printf("DONE UPDATING WINDOW\n")
 
 					*numberOfACKInWindow++
 				}
 			}
 
 			mutex.Unlock()
-			fmt.Printf("UNLOCKING\n")
+			// fmt.Printf("UNLOCKING\n")
 
 			// si on recoit un ACK 3x, c'est que packet suivant celui acquitté est perdu
 		} else if timesReceived == 3 {
 		}
 
 		if *endOfFile == highestReceivedSeqNum {
-			fmt.Printf("ALL PACKETS HAVE BEEN RECEIVED\n")
+			// fmt.Printf("ALL PACKETS HAVE BEEN RECEIVED\n")
 			channelEndOfFile <- true
 		}
 
-		fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
+		// fmt.Printf("DONE PROCESSING SEQNUM : %d\n", highestReceivedSeqNum)
 	}
 	//s'il ne reste plus à acquitter c'est que tous le fichier est envoyé
 
@@ -402,7 +415,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int]packet, channelLoss chan
 	//Tant qu'on a pas reçu l'acquittement
 
 	for {
-		fmt.Printf("SENDING SEQNUM : %d\n", seqNum)
+		// fmt.Printf("SENDING SEQNUM : %d\n", seqNum)
 
 		_, err := dataConn.WriteTo(msg, dataAddr)
 		if err != nil {
@@ -414,7 +427,7 @@ func packetHandling(mutex *sync.Mutex, packets *map[int]packet, channelLoss chan
 
 		mutex.Lock()
 		if _, ok := (*packets)[seqNum]; !ok {
-			fmt.Printf("ENDING ROUTINE FOR SEQNUM : %d\n", seqNum)
+			// fmt.Printf("ENDING ROUTINE FOR SEQNUM : %d\n", seqNum)
 			mutex.Unlock()
 			break
 		}
